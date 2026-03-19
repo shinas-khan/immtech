@@ -1,0 +1,169 @@
+export const C = {
+  blue: "#0057FF", blueDark: "#0038CC", cyan: "#00C2FF",
+  green: "#00D68F", orange: "#FF6B35", purple: "#7C3AED",
+  pink: "#FF3B7A", text: "#0A0F1E", textMid: "#4B5675",
+  textLight: "#9CA3B8", border: "#E8EEFF", bg: "#F8FAFF", white: "#FFFFFF",
+}
+
+// 150+ UK visa sponsorship roles grouped by industry
+export const ALL_JOBS = [
+  // Technology & Cyber Security
+  "AI Engineer", "Android Developer", "Backend Developer", "Big Data Engineer",
+  "Blockchain Developer", "Business Intelligence Analyst", "Cloud Architect",
+  "Cloud Engineer", "Cyber Security Analyst", "Cyber Security Consultant",
+  "Cyber Security Engineer", "Cyber Security Manager", "Cyber Threat Intelligence Analyst",
+  "Data Architect", "Data Engineer", "Data Scientist", "Database Administrator",
+  "DevOps Engineer", "Digital Transformation Manager", "Embedded Systems Engineer",
+  "Ethical Hacker", "Frontend Developer", "Full Stack Developer", "Game Developer",
+  "Information Security Analyst", "Information Security Manager", "iOS Developer",
+  "IT Auditor", "IT Project Manager", "IT Support Engineer", "Java Developer",
+  "Machine Learning Engineer", "Mobile Developer", "Network Engineer",
+  "Network Security Engineer", "Penetration Tester", "Platform Engineer",
+  "Product Manager", "Python Developer", "QA Engineer", "React Developer",
+  "SAP Consultant", "Scrum Master", "Security Operations Analyst", "Site Reliability Engineer",
+  "Software Architect", "Software Engineer", "Solutions Architect", "Systems Administrator",
+  "Systems Analyst", "Tech Lead", "UX Designer", "UX Researcher", "Web Designer",
+  "Web Developer", "WordPress Developer",
+
+  // Healthcare & Medicine
+  "Anaesthetist", "Audiologist", "Biomedical Scientist", "Care Worker",
+  "Clinical Pharmacologist", "Clinical Psychologist", "Clinical Research Associate",
+  "Dentist", "Dermatologist", "Dietitian", "Emergency Medicine Doctor",
+  "General Practitioner", "Geriatrician", "Health Visitor", "Mental Health Nurse",
+  "Midwife", "Neurologist", "NHS Doctor", "Occupational Therapist", "Oncologist",
+  "Ophthalmologist", "Optometrist", "Oral Surgeon", "Orthopaedic Surgeon",
+  "Paramedic", "Paediatrician", "Pharmacist", "Physiotherapist", "Psychiatrist",
+  "Psychologist", "Radiographer", "Radiologist", "Registered Nurse",
+  "Respiratory Therapist", "Social Worker", "Speech Therapist", "Surgeon",
+  "Theatre Nurse",
+
+  // Engineering
+  "Aerospace Engineer", "Agricultural Engineer", "Automotive Engineer",
+  "Biomedical Engineer", "Chemical Engineer", "Civil Engineer",
+  "Control Systems Engineer", "Electrical Engineer", "Electrician",
+  "Electronics Engineer", "Environmental Engineer", "Geotechnical Engineer",
+  "Highway Engineer", "Hydraulic Engineer", "Instrumentation Engineer",
+  "Manufacturing Engineer", "Marine Engineer", "Materials Engineer",
+  "Mechanical Engineer", "Mechatronics Engineer", "Mining Engineer",
+  "Nuclear Engineer", "Oil & Gas Engineer", "Petroleum Engineer",
+  "Process Engineer", "Robotics Engineer", "Structural Engineer",
+  "Telecommunications Engineer", "Water Engineer",
+
+  // Finance & Banking
+  "Accountant", "Actuarial Analyst", "Anti-Money Laundering Analyst",
+  "Audit Manager", "Business Analyst", "Chartered Accountant",
+  "Chief Financial Officer", "Compliance Officer", "Credit Analyst",
+  "Finance Manager", "Financial Analyst", "Financial Controller",
+  "Financial Risk Manager", "Forensic Accountant", "Fund Manager",
+  "Insurance Underwriter", "Investment Analyst", "Investment Banker",
+  "Management Accountant", "Mortgage Advisor", "Portfolio Manager",
+  "Quantitative Analyst", "Risk Analyst", "Tax Advisor", "Tax Manager",
+  "Treasury Analyst", "Wealth Manager",
+
+  // Science & Research
+  "Analytical Chemist", "Biochemist", "Bioinformatics Scientist",
+  "Biologist", "Chemist", "Clinical Data Manager", "Environmental Scientist",
+  "Food Scientist", "Geologist", "Laboratory Technician", "Marine Biologist",
+  "Materials Scientist", "Microbiologist", "Nanotechnologist", "Neuroscientist",
+  "Nuclear Physicist", "Pharmacologist", "physicist", "Research Scientist",
+  "Toxicologist", "Veterinary Surgeon",
+
+  // Architecture & Construction
+  "Architect", "BIM Manager", "Building Services Engineer",
+  "Construction Manager", "Cost Manager", "Facilities Manager",
+  "Interior Designer", "Landscape Architect", "Planning Engineer",
+  "Project Engineer", "Project Manager", "Quantity Surveyor",
+  "Site Manager", "Urban Planner",
+
+  // Education
+  "Early Years Teacher", "Further Education Lecturer", "Primary School Teacher",
+  "Secondary School Teacher", "SEND Teacher", "Special Educational Needs Coordinator",
+  "University Lecturer",
+
+  // Legal
+  "Barrister", "Compliance Manager", "Corporate Lawyer", "Immigration Lawyer",
+  "Intellectual Property Lawyer", "Legal Counsel", "Paralegal", "Solicitor",
+
+  // Other High-Demand
+  "Chef", "Logistics Manager", "Marketing Manager", "Operations Manager",
+  "Recruitment Consultant", "Supply Chain Manager",
+].sort()
+
+// Search aliases — typing these will find related jobs
+export const SEARCH_ALIASES = {
+  "cyber security": ["Cyber Security Analyst", "Cyber Security Consultant", "Cyber Security Engineer", "Cyber Security Manager", "Cyber Threat Intelligence Analyst", "Information Security Analyst", "Information Security Manager", "Network Security Engineer", "Penetration Tester", "Ethical Hacker", "Security Operations Analyst", "IT Auditor"],
+  "cybersecurity": ["Cyber Security Analyst", "Cyber Security Consultant", "Cyber Security Engineer", "Cyber Security Manager", "Cyber Threat Intelligence Analyst", "Information Security Analyst", "Information Security Manager", "Network Security Engineer", "Penetration Tester", "Ethical Hacker", "Security Operations Analyst"],
+  "security": ["Cyber Security Analyst", "Cyber Security Engineer", "Information Security Analyst", "Network Security Engineer", "Security Operations Analyst", "Penetration Tester"],
+  "nurse": ["Registered Nurse", "Mental Health Nurse", "Theatre Nurse", "Health Visitor", "Midwife"],
+  "nursing": ["Registered Nurse", "Mental Health Nurse", "Theatre Nurse", "Health Visitor", "Midwife"],
+  "doctor": ["General Practitioner", "NHS Doctor", "Surgeon", "Anaesthetist", "Neurologist", "Oncologist", "Psychiatrist", "Paediatrician", "Emergency Medicine Doctor", "Geriatrician"],
+  "software": ["Software Engineer", "Software Architect", "Backend Developer", "Frontend Developer", "Full Stack Developer", "Mobile Developer"],
+  "developer": ["Software Engineer", "Backend Developer", "Frontend Developer", "Full Stack Developer", "Web Developer", "iOS Developer", "Android Developer", "Java Developer", "Python Developer", "React Developer"],
+  "data": ["Data Scientist", "Data Engineer", "Data Analyst", "Data Architect", "Big Data Engineer", "Business Intelligence Analyst", "Database Administrator"],
+  "cloud": ["Cloud Engineer", "Cloud Architect", "DevOps Engineer", "Site Reliability Engineer", "Platform Engineer"],
+  "ai": ["AI Engineer", "Machine Learning Engineer", "Data Scientist", "Bioinformatics Scientist"],
+  "machine learning": ["Machine Learning Engineer", "AI Engineer", "Data Scientist"],
+  "engineering": ["Software Engineer", "Civil Engineer", "Mechanical Engineer", "Electrical Engineer", "Chemical Engineer", "Structural Engineer"],
+  "finance": ["Financial Analyst", "Finance Manager", "Investment Analyst", "Risk Analyst", "Accountant", "Chartered Accountant"],
+  "accountant": ["Accountant", "Chartered Accountant", "Management Accountant", "Forensic Accountant", "Financial Controller"],
+  "teacher": ["Primary School Teacher", "Secondary School Teacher", "Early Years Teacher", "SEND Teacher", "University Lecturer", "Further Education Lecturer"],
+  "architect": ["Architect", "Cloud Architect", "Software Architect", "Solutions Architect", "Data Architect"],
+  "lawyer": ["Solicitor", "Barrister", "Corporate Lawyer", "Immigration Lawyer", "Legal Counsel"],
+  "pharmacist": ["Pharmacist", "Clinical Pharmacologist", "Pharmacologist"],
+  "physio": ["Physiotherapist", "Occupational Therapist"],
+  "nhs": ["Registered Nurse", "General Practitioner", "NHS Doctor", "Physiotherapist", "Radiographer", "Pharmacist", "Midwife", "Paramedic"],
+  "network": ["Network Engineer", "Network Security Engineer", "Telecommunications Engineer"],
+  "devops": ["DevOps Engineer", "Site Reliability Engineer", "Platform Engineer", "Cloud Engineer"],
+  "project manager": ["Project Manager", "IT Project Manager", "Scrum Master", "Construction Manager"],
+}
+
+export const ALL_LOCATIONS = [
+  "Aberdeen", "Bath", "Belfast", "Birmingham", "Bradford", "Brighton", "Bristol",
+  "Cambridge", "Cardiff", "Cheltenham", "Coventry", "Derby", "Edinburgh", "Exeter",
+  "Glasgow", "Hull", "Leeds", "Leicester", "Liverpool", "London", "Manchester",
+  "Milton Keynes", "Newcastle", "Norwich", "Nottingham", "Oxford", "Plymouth",
+  "Portsmouth", "Reading", "Remote", "Sheffield", "Southampton", "Sunderland",
+  "Swansea", "Wolverhampton", "York",
+].sort()
+
+export const NATIONALITIES = [
+  "Afghan", "Albanian", "Algerian", "American", "Argentinian", "Australian",
+  "Austrian", "Bangladeshi", "Belgian", "Brazilian", "British", "Bulgarian",
+  "Canadian", "Chilean", "Chinese", "Colombian", "Croatian", "Czech", "Danish",
+  "Dutch", "Egyptian", "Emirati", "Ethiopian", "Filipino", "Finnish", "French",
+  "Ghanaian", "German", "Greek", "Hungarian", "Indian", "Indonesian", "Iranian",
+  "Iraqi", "Irish", "Israeli", "Italian", "Jamaican", "Japanese", "Jordanian",
+  "Kenyan", "Korean", "Lebanese", "Malaysian", "Mexican", "Moroccan", "Nepali",
+  "New Zealander", "Nigerian", "Norwegian", "Pakistani", "Peruvian", "Polish",
+  "Portuguese", "Romanian", "Russian", "Saudi", "Senegalese", "Serbian",
+  "Singaporean", "Somali", "South African", "Spanish", "Sri Lankan", "Swedish",
+  "Swiss", "Syrian", "Taiwanese", "Tanzanian", "Thai", "Turkish", "Ugandan",
+  "Ukrainian", "Venezuelan", "Vietnamese", "Zambian", "Zimbabwean",
+].sort()
+
+export const INDUSTRIES = [
+  "Technology & Software", "Cyber Security", "Healthcare & Medicine",
+  "Engineering & Manufacturing", "Finance & Banking", "Education & Training",
+  "Construction & Architecture", "Legal & Compliance", "Marketing & Creative",
+  "Logistics & Supply Chain", "Energy & Utilities", "Research & Science",
+]
+
+// Smart search function — matches aliases and partial text
+export function smartSearch(query, jobs) {
+  if (!query) return jobs
+  const q = query.toLowerCase().trim()
+
+  // Check aliases first
+  const aliasMatches = SEARCH_ALIASES[q]
+  if (aliasMatches) return aliasMatches
+
+  // Check partial alias matches
+  for (const [alias, results] of Object.entries(SEARCH_ALIASES)) {
+    if (alias.includes(q) || q.includes(alias)) {
+      return [...new Set([...results, ...jobs.filter(j => j.toLowerCase().includes(q))])]
+    }
+  }
+
+  // Fall back to partial text match
+  return jobs.filter(j => j.toLowerCase().includes(q))
+}
