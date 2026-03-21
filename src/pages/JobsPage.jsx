@@ -142,6 +142,31 @@ const FRESHER_KW = [
   "placement year", "internship", "associate level", "school leaver",
 ]
 
+// Agencies known to NEVER offer visa sponsorship
+const NEVER_SPONSOR_AGENCIES = [
+  "academics",
+  "creative support",
+  "teaching personnel",
+  "protocol education",
+  "smart education",
+  "supply desk",
+  "think education",
+  "vision for education",
+  "engage education",
+  "tradewind recruitment",
+  "timeplan education",
+  "gsl education",
+  "abc teachers",
+  "key education",
+  "prospero teaching",
+  "randstad education",
+  "supply well",
+  "teacher active",
+  "axcis education",
+  "clarus education",
+  "veritas education",
+]
+
 // ─── Well-known UK visa sponsors (extra boost if employer matches) ────────────
 const KNOWN_SPONSORS = [
   "amazon", "google", "microsoft", "meta", "apple", "ibm", "accenture",
@@ -192,6 +217,12 @@ function scoreJob(job, sponsorData) {
   let fresherFriendly = false
   let hardReject = false
 
+  // AGENCY BLACKLIST — these agencies never sponsor visas
+  const empLower = (job.employer || "").toLowerCase()
+  if (NEVER_SPONSOR_AGENCIES.some(a => empLower.includes(a))) {
+    return { score: -1, signals: [], fresherFriendly: false, verified: false, hardReject: true }
+  }
+  
   // HARD NEGATIVE CHECK — description checked first, before sponsor register
   for (const neg of HARD_NEGATIVES) {
     if (text.includes(neg.toLowerCase())) {
