@@ -184,19 +184,44 @@ async function batchCheckSponsors(employers) {
 
 // ─── Core scoring function ────────────────────────────────────────────────────
 function scoreJob(job, sponsorData) {
-  const text = `${job.title} ${job.description} ${job.employer}`.toLowerCase()
+  // Strip HTML tags from description before checking
+  const rawDesc = (job.description || "").replace(/<[^>]*>/g, " ").toLowerCase()
+  const text = `${job.title} ${rawDesc} ${job.employer}`.toLowerCase()
   let score = 0
   let signals = []
   let fresherFriendly = false
   let hardReject = false
 
-  // HARD NEGATIVE CHECK — immediate discard
+  // HARD NEGATIVE CHECK — description checked first, before sponsor register
   for (const neg of HARD_NEGATIVES) {
-    if (text.includes(neg)) {
+    if (text.includes(neg.toLowerCase())) {
       hardReject = true
       break
     }
   }
+
+  // REGEX PATTERNS — catch variations not covered by exact phrases
+  if (!hardReject) {
+    const negPatterns = [
+      /right to work.{0,40}no (visa )?sponsorship/i,
+      /no (visa )?sponsorship.{0,40}right to work/i,
+      /sponsorship (is |will be |)(not|un)available/i,
+      /cannot (offer|provide|support).{0,30}(visa|sponsorship)/i,
+      /not (open|eligible|available).{0,30}(ukvi|sponsorship|visa)/i,
+      /unable to.{0,40}(sponsor|accept).{0,40}(visa|sponsorship|skilled worker)/i,
+      /skilled worker visa.{0,30}(not|no|unable|cannot)/i,
+      /(must|need to) (already )?have.{0,30}right to work/i,
+      /only (accept|consider).{0,40}(eligible|right to work)/i,
+      /applicants?.{0,20}(must|need).{0,20}(eligible to work|right to work)/i,
+    ]
+    for (const pattern of negPatterns) {
+      if (pattern.test(text)) {
+        hardReject = true
+        break
+      }
+    }
+  }
+
   if (hardReject) return { score: -1, signals: [], fresherFriendly: false, verified: false, hardReject: true }
 
   // UK GOV REGISTER VERIFIED — strongest signal
