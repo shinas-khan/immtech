@@ -6,7 +6,7 @@ import Nav from "../components/Nav"
 
 const ADZUNA_ID = "344e86d1"
 const ADZUNA_KEY = "039c47ae80bab92aef99751a471040fb"
-const FRESHER_KW = ["graduate","entry level","junior","trainee","apprentice","no experience","fresh graduate","new graduate","grad scheme","graduate scheme","placement","internship"]
+const FRESHER_KW = ["graduate","entry level","junior","trainee","apprentice","no experience","fresh graduate","grad scheme","graduate scheme","placement","internship"]
 const NEG_KW = ["must have right to work","no sponsorship","sponsorship not available","cannot sponsor","uk residents only","british nationals only","no visa"]
 
 async function checkSponsor(employerName) {
@@ -39,7 +39,7 @@ function scoreJob(job, sponsorData) {
 }
 
 async function fetchAdzuna(q, loc, page) {
-  const params = new URLSearchParams({ app_id: ADZUNA_ID, app_key: ADZUNA_KEY, what: q, where: loc || "UK", results_per_page: 20, what_and: "visa sponsorship" })
+  const params = new URLSearchParams({ app_id: ADZUNA_ID, app_key: ADZUNA_KEY, what: q || "visa sponsorship", where: loc || "UK", results_per_page: 20, what_and: "visa sponsorship" })
   const r = await fetch(`https://api.adzuna.com/v1/api/jobs/gb/search/${page}?${params}`)
   if (!r.ok) throw new Error(`Adzuna ${r.status}`)
   const data = await r.json()
@@ -47,7 +47,7 @@ async function fetchAdzuna(q, loc, page) {
 }
 
 async function fetchReed(q, loc, page) {
-  const params = new URLSearchParams({ keywords: `${q} visa sponsorship`, locationName: loc || "United Kingdom", resultsToTake: 20, resultsToSkip: (page - 1) * 20 })
+  const params = new URLSearchParams({ keywords: `${q || ""} visa sponsorship`, locationName: loc || "United Kingdom", resultsToTake: 20, resultsToSkip: (page - 1) * 20 })
   const r = await fetch(`https://uk-visa-jobs-six.vercel.app/api/reed?${params}`)
   if (!r.ok) throw new Error(`Reed ${r.status}`)
   const data = await r.json()
@@ -61,36 +61,39 @@ function JobCard({ job, onSave, saved, navigate }) {
   const color = job.verified ? "#00D68F" : job.score >= 60 ? "#0057FF" : job.score >= 30 ? "#FF6B35" : "#9CA3B8"
 
   return (
-    <div style={{ background: "#fff", border: `1.5px solid ${job.verified ? "#00D68F40" : "#E8EEFF"}`, borderRadius: 16, padding: "18px 20px", transition: "all 0.2s", position: "relative" }}>
+    <div style={{ background: "#fff", border: `1.5px solid ${job.verified ? "#00D68F40" : "#E8EEFF"}`, borderRadius: 16, padding: "20px 22px", transition: "all 0.2s", position: "relative" }}
+      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,57,255,0.07)" }}
+      onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none" }}
+    >
       {job.verified && (
-        <div style={{ position: "absolute", top: 0, right: 0, background: "linear-gradient(135deg, #00D68F, #00A67E)", color: "#fff", fontSize: 9, fontWeight: 800, padding: "4px 10px", borderRadius: "0 16px 0 8px", letterSpacing: 0.5 }}>
-          ✓ UK GOV VERIFIED
+        <div style={{ position: "absolute", top: 0, right: 0, background: "linear-gradient(135deg, #00D68F, #00A67E)", color: "#fff", fontSize: 9, fontWeight: 800, padding: "4px 12px", borderRadius: "0 16px 0 8px", letterSpacing: 0.5 }}>
+          ✓ UK GOV VERIFIED SPONSOR
         </div>
       )}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, marginTop: job.verified ? 6 : 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginTop: job.verified ? 8 : 0 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
-            <span style={{ background: job.source === "Reed" ? "#e8534218" : "#7c4dff18", color: job.source === "Reed" ? "#e85342" : "#7c4dff", borderRadius: 4, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{job.source}</span>
-            {job.fresherFriendly && <span style={{ background: "#00D68F15", color: "#00D68F", borderRadius: 4, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>🎓 Fresher</span>}
+          <div style={{ display: "flex", gap: 6, marginBottom: 7, flexWrap: "wrap" }}>
+            <span style={{ background: job.source === "Reed" ? "#e8534218" : "#7c4dff18", color: job.source === "Reed" ? "#e85342" : "#7c4dff", borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>{job.source}</span>
+            {job.fresherFriendly && <span style={{ background: "#00D68F15", color: "#00D68F", borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>🎓 Fresher</span>}
+            {job.sponsorInfo?.route && <span style={{ background: "#0057FF08", color: "#0057FF", borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 600 }}>🛂 {job.sponsorInfo.route}</span>}
           </div>
-          <h3 style={{ fontSize: 15, fontWeight: 800, color: "#0A0F1E", margin: "0 0 3px", letterSpacing: -0.2, lineHeight: 1.3 }}>{job.title}</h3>
-          <div style={{ color: "#4B5675", fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{job.employer} · {job.location}</div>
+          <h3 style={{ fontSize: 15, fontWeight: 800, color: "#0A0F1E", margin: "0 0 4px", letterSpacing: -0.2, lineHeight: 1.3 }}>{job.title}</h3>
+          <div style={{ color: "#4B5675", fontSize: 13 }}>{job.employer} · {job.location}</div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
           <div style={{ background: `${color}15`, border: `1px solid ${color}40`, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, color, whiteSpace: "nowrap" }}>
             {job.verified ? "Verified" : job.score >= 60 ? "Very Likely" : "Likely"} {job.score}%
           </div>
           <button onClick={() => onSave(job)} style={{ background: saved ? "#0057FF10" : "none", border: `1px solid ${saved ? "#0057FF" : "#E8EEFF"}`, color: saved ? "#0057FF" : "#9CA3B8", borderRadius: 6, padding: "3px 10px", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-            {saved ? "✓ Saved" : "Save"}
+            {saved ? "✓ Saved" : "🔖 Save"}
           </button>
         </div>
       </div>
-
-      <div style={{ display: "flex", gap: 12, marginTop: 8, fontSize: 12, color: "#4B5675", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 14, marginTop: 8, fontSize: 12, color: "#4B5675", flexWrap: "wrap" }}>
         <span>💷 {salary}</span>
         {posted && <span>📅 {posted}</span>}
+        {job.full_time !== undefined && <span>{job.full_time ? "Full-time" : "Part-time"}</span>}
       </div>
-
       {job.signals?.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
           {job.signals.map((s, i) => {
@@ -99,24 +102,96 @@ function JobCard({ job, onSave, saved, navigate }) {
           })}
         </div>
       )}
-
       {job.description && (
         <>
           <button onClick={() => setExpanded(e => !e)} style={{ background: "none", border: "none", color: "#0057FF", fontSize: 12, cursor: "pointer", marginTop: 8, padding: 0, fontFamily: "inherit" }}>
-            {expanded ? "▲ Hide" : "▼ Details"}
+            {expanded ? "▲ Hide details" : "▼ Show description"}
           </button>
-          {expanded && <p style={{ margin: "8px 0 0", fontSize: 12, color: "#4B5675", lineHeight: 1.7, borderTop: "1px solid #E8EEFF", paddingTop: 8, maxHeight: 140, overflow: "auto" }}>
-            {job.description.replace(/<[^>]*>/g, "").slice(0, 500)}…
+          {expanded && <p style={{ margin: "8px 0 0", fontSize: 12, color: "#4B5675", lineHeight: 1.7, borderTop: "1px solid #E8EEFF", paddingTop: 8, maxHeight: 160, overflow: "auto" }}>
+            {job.description.replace(/<[^>]*>/g, "").slice(0, 600)}…
           </p>}
         </>
       )}
-
-      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-        <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, textDecoration: "none", flex: 1, textAlign: "center" }}>Apply Now →</a>
+      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+        <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", borderRadius: 8, padding: "9px 16px", fontSize: 13, fontWeight: 700, textDecoration: "none", textAlign: "center" }}>Apply Now →</a>
         {job.sponsorInfo && (
-          <button onClick={() => navigate(`/employer/${encodeURIComponent(job.employer)}`)} style={{ background: "#00D68F10", border: "1px solid #00D68F30", color: "#00D68F", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>🏢 Profile</button>
+          <button onClick={() => navigate(`/employer/${encodeURIComponent(job.employer)}`)} style={{ background: "#00D68F10", border: "1px solid #00D68F30", color: "#00D68F", borderRadius: 8, padding: "9px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>🏢</button>
         )}
       </div>
+    </div>
+  )
+}
+
+// Dropdown component
+function SearchDropdown({ value, onChange, placeholder, icon, options, onSelect }) {
+  const [open, setOpen] = useState(false)
+  const [filter, setFilter] = useState("")
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const fn = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener("mousedown", fn)
+    return () => document.removeEventListener("mousedown", fn)
+  }, [])
+
+  const filtered = filter.length > 0
+    ? options.filter(o => o.toLowerCase().includes(filter.toLowerCase()))
+    : options
+
+  return (
+    <div ref={ref} style={{ position: "relative", flex: 1 }}>
+      <div onClick={() => setOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", cursor: "pointer", background: open ? "#F8FAFF" : "#fff" }}>
+        <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>
+        <span style={{ fontSize: 15, color: value ? "#0A0F1E" : "#9CA3B8", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {value || placeholder}
+        </span>
+        <span style={{ color: "#9CA3B8", fontSize: 12, flexShrink: 0, transition: "transform 0.2s", transform: open ? "rotate(180deg)" : "none" }}>▼</span>
+      </div>
+
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1.5px solid #0057FF40", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,57,255,0.12)", zIndex: 400, overflow: "hidden" }}>
+          {/* Search input inside dropdown */}
+          <div style={{ padding: "10px 12px", borderBottom: "1px solid #E8EEFF", position: "sticky", top: 0, background: "#fff" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#F8FAFF", border: "1px solid #E8EEFF", borderRadius: 10, padding: "8px 12px" }}>
+              <span style={{ fontSize: 13, color: "#9CA3B8" }}>🔍</span>
+              <input
+                value={filter}
+                onChange={e => setFilter(e.target.value)}
+                placeholder={`Search ${placeholder.toLowerCase()}...`}
+                style={{ border: "none", outline: "none", background: "transparent", fontSize: 14, color: "#0A0F1E", fontFamily: "inherit", flex: 1 }}
+                onClick={e => e.stopPropagation()}
+                autoFocus
+              />
+              {filter && <span onClick={() => setFilter("")} style={{ cursor: "pointer", color: "#9CA3B8", fontSize: 14 }}>✕</span>}
+            </div>
+          </div>
+
+          {/* Clear option */}
+          {value && (
+            <div onClick={() => { onSelect(""); setOpen(false); setFilter("") }} style={{ padding: "10px 16px", fontSize: 13, color: "#DC2626", cursor: "pointer", borderBottom: "1px solid #E8EEFF", fontWeight: 600 }}>
+              ✕ Clear selection
+            </div>
+          )}
+
+          {/* Options list */}
+          <div style={{ maxHeight: 260, overflowY: "auto" }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding: "20px 16px", textAlign: "center", color: "#9CA3B8", fontSize: 14 }}>No results found</div>
+            ) : (
+              filtered.map(opt => (
+                <div key={opt} onClick={() => { onSelect(opt); setOpen(false); setFilter("") }}
+                  style={{ padding: "11px 16px", fontSize: 14, color: opt === value ? "#0057FF" : "#0A0F1E", fontWeight: opt === value ? 700 : 400, cursor: "pointer", background: opt === value ? "#0057FF08" : "transparent", borderBottom: "1px solid rgba(232,238,255,0.5)", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                  onMouseEnter={e => { if (opt !== value) e.currentTarget.style.background = "#F8FAFF" }}
+                  onMouseLeave={e => { if (opt !== value) e.currentTarget.style.background = "transparent" }}
+                >
+                  <span>{opt}</span>
+                  {opt === value && <span style={{ color: "#0057FF", fontSize: 12 }}>✓</span>}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -125,8 +200,6 @@ export default function JobsPage() {
   const [searchParams] = useSearchParams()
   const [q, setQ] = useState(searchParams.get("q") || "")
   const [loc, setLoc] = useState(searchParams.get("loc") || "")
-  const [showQ, setShowQ] = useState(false)
-  const [showL, setShowL] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState({ salaryMin: "", salaryMax: "", jobType: "", source: "", sortBy: "Score" })
   const [fresherOnly, setFresherOnly] = useState(false)
@@ -135,30 +208,16 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState("")
-  const [searched, setSearched] = useState(false)
   const [page, setPage] = useState(1)
   const [savedJobs, setSavedJobs] = useState(new Set())
   const navigate = useNavigate()
-  const searchTimeout = useRef(null)
 
   const setFilter = (k, v) => setFilters(f => ({ ...f, [k]: f[k] === v ? "" : v }))
   const activeCount = Object.values(filters).filter(v => v !== "" && v !== "Score").length
-  const displayJobs = q.length > 0 ? smartSearch(q, ALL_JOBS) : ALL_JOBS
-  const displayLocs = loc.length > 0 ? ALL_LOCATIONS.filter(l => l.toLowerCase().includes(loc.toLowerCase())) : ALL_LOCATIONS
 
-  // Auto-search when query changes (with debounce)
+  // Load all jobs on page mount
   useEffect(() => {
-    if (q.trim().length < 2) return
-    clearTimeout(searchTimeout.current)
-    searchTimeout.current = setTimeout(() => {
-      handleSearch(1, true)
-    }, 600)
-    return () => clearTimeout(searchTimeout.current)
-  }, [q])
-
-  // Auto-search from URL params
-  useEffect(() => {
-    if (searchParams.get("q")) handleSearch(1, true)
+    handleSearch(1, q || "", loc || "")
   }, [])
 
   const handleSave = async (job) => {
@@ -169,26 +228,33 @@ export default function JobsPage() {
     setSavedJobs(s => new Set([...s, job.id]))
   }
 
-  const handleSearch = useCallback(async (p = 1, silent = false) => {
-    const searchQ = q.trim()
-    if (!searchQ) return
-    if (!silent) setLoading(true)
-    else setLoading(true)
-    setError(""); setPage(p)
+  const handleSearch = useCallback(async (p = 1, searchQ = q, searchLoc = loc) => {
+    setLoading(true); setError(""); setPage(p)
     try {
       let allJobs = []
       await Promise.allSettled([
-        fetchReed(searchQ, loc, p).then(r => allJobs.push(...r)).catch(() => {}),
-        fetchAdzuna(searchQ, loc, p).then(r => allJobs.push(...r)).catch(() => {}),
+        fetchReed(searchQ, searchLoc, p).then(r => allJobs.push(...r)).catch(() => {}),
+        fetchAdzuna(searchQ, searchLoc, p).then(r => allJobs.push(...r)).catch(() => {}),
       ])
-      if (allJobs.length === 0) { setError("No results found. Try a different search."); setLoading(false); return }
+      if (allJobs.length === 0) { setError("No results found. Try a different search or location."); setLoading(false); return }
+
+      // Deduplicate
       const seen = new Set()
       allJobs = allJobs.filter(j => { const key = `${j.title.toLowerCase()}|${j.employer.toLowerCase()}`; if (seen.has(key)) return false; seen.add(key); return true })
+
+      // Verify against sponsor register
       setVerifying(true)
-      const employers = allJobs.map(j => j.employer)
-      const sponsorMap = await batchCheckSponsors(employers)
+      const sponsorMap = await batchCheckSponsors(allJobs.map(j => j.employer))
       setVerifying(false)
-      let scored = allJobs.map(j => { const sponsorInfo = sponsorMap[j.employer]; const { score, signals, fresherFriendly, verified } = scoreJob(j, sponsorInfo); return { ...j, score, signals, fresherFriendly, verified, sponsorInfo } }).filter(j => j.score >= 0)
+
+      // Score
+      let scored = allJobs.map(j => {
+        const sponsorInfo = sponsorMap[j.employer]
+        const { score, signals, fresherFriendly, verified } = scoreJob(j, sponsorInfo)
+        return { ...j, score, signals, fresherFriendly, verified, sponsorInfo }
+      }).filter(j => j.score >= 0)
+
+      // Apply filters
       if (fresherOnly) scored = scored.filter(j => j.fresherFriendly)
       if (verifiedOnly) scored = scored.filter(j => j.verified)
       if (filters.jobType === "Full-time") scored = scored.filter(j => j.full_time)
@@ -200,126 +266,151 @@ export default function JobsPage() {
       if (filters.sortBy === "Salary") scored.sort((a, b) => (b.salary_min || 0) - (a.salary_min || 0))
       else if (filters.sortBy === "Date") scored.sort((a, b) => new Date(b.posted || 0) - new Date(a.posted || 0))
       else scored.sort((a, b) => (b.verified ? 1 : 0) - (a.verified ? 1 : 0) || b.score - a.score)
+
       setJobs(p === 1 ? scored : prev => [...prev, ...scored])
-      setSearched(true)
     } catch (err) { setError(err.message) }
     finally { setLoading(false); setVerifying(false) }
   }, [q, loc, fresherOnly, verifiedOnly, filters])
 
-  const pillStyle = (active) => ({ padding: "6px 12px", borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${active ? "#0057FF" : "#E8EEFF"}`, background: active ? "#0057FF0D" : "#F8FAFF", color: active ? "#0057FF" : "#4B5675", transition: "all 0.18s", fontFamily: "inherit" })
+  const pillStyle = (active) => ({ padding: "6px 14px", borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: "pointer", border: `1.5px solid ${active ? "#0057FF" : "#E8EEFF"}`, background: active ? "#0057FF0D" : "#F8FAFF", color: active ? "#0057FF" : "#4B5675", transition: "all 0.18s", fontFamily: "inherit" })
   const stats = { total: jobs.length, verified: jobs.filter(j => j.verified).length, fresher: jobs.filter(j => j.fresherFriendly).length }
 
   return (
     <div style={{ minHeight: "100vh", background: "#F8FAFF", fontFamily: "inherit" }}>
       <Nav />
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "86px 4% 60px" }}>
+      <div style={{ maxWidth: 980, margin: "0 auto", padding: "86px 4% 60px" }}>
 
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontSize: "clamp(22px, 4vw, 28px)", fontWeight: 900, color: "#0A0F1E", margin: "0 0 4px", letterSpacing: -0.8 }}>Find Sponsored Jobs</h1>
-          <p style={{ color: "#4B5675", fontSize: 14 }}>Verified against 125,000+ UK gov licensed sponsors · Results appear as you type</p>
+        {/* Header */}
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: "clamp(22px, 4vw, 30px)", fontWeight: 900, color: "#0A0F1E", margin: "0 0 6px", letterSpacing: -1 }}>Find Sponsored Jobs</h1>
+          <p style={{ color: "#4B5675", fontSize: 14 }}>Every employer verified against 125,000+ UK Home Office licensed sponsors</p>
         </div>
 
-        {/* Search bar */}
-        <div style={{ background: "#fff", border: "1.5px solid #E8EEFF", borderRadius: 16, overflow: "hidden", marginBottom: 12, boxShadow: "0 4px 24px rgba(0,57,255,0.06)" }}>
-          {/* Job input */}
-          <div style={{ position: "relative", borderBottom: "1px solid #E8EEFF" }}>
-            <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 16, pointerEvents: "none" }}>🔍</span>
-            <input value={q} onChange={e => { setQ(e.target.value); setShowQ(true); setShowL(false) }} onFocus={() => { setShowQ(true); setShowL(false) }} onBlur={() => setTimeout(() => setShowQ(false), 200)} onKeyDown={e => e.key === "Enter" && handleSearch(1)} placeholder="Job title or keyword... (results appear as you type)" style={{ width: "100%", border: "none", outline: "none", background: "transparent", padding: "14px 14px 14px 44px", fontSize: 15, color: "#0A0F1E", fontFamily: "inherit" }} />
-            {loading && <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#0057FF", fontWeight: 600 }}>Searching...</span>}
-            {showQ && q.length > 0 && (
-              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #E8EEFF", borderRadius: "0 0 14px 14px", boxShadow: "0 16px 48px rgba(0,57,255,0.1)", maxHeight: 240, overflowY: "auto", zIndex: 300 }}>
-                {displayJobs.slice(0, 8).map(s => (
-                  <div key={s} onMouseDown={() => { setQ(s); setShowQ(false) }} style={{ padding: "11px 16px", cursor: "pointer", fontSize: 14, color: "#0A0F1E", borderBottom: "1px solid rgba(232,238,255,0.5)", display: "flex", alignItems: "center", gap: 8 }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#0057FF08"}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                  ><span style={{ fontSize: 12, color: "#9CA3B8" }}>🔍</span>{s}</div>
-                ))}
-              </div>
-            )}
-          </div>
+        {/* Search bar with dropdowns */}
+        <div style={{ background: "#fff", border: "1.5px solid #E8EEFF", borderRadius: 18, overflow: "visible", marginBottom: 14, boxShadow: "0 4px 24px rgba(0,57,255,0.06)", position: "relative" }}>
+          <div style={{ display: "flex", alignItems: "stretch", gap: 0 }}>
 
-          {/* Location + buttons row */}
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <div style={{ flex: 1, position: "relative" }}>
-              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, pointerEvents: "none" }}>📍</span>
-              <input value={loc} onChange={e => { setLoc(e.target.value); setShowL(true); setShowQ(false) }} onFocus={() => { setShowL(true); setShowQ(false) }} onBlur={() => setTimeout(() => setShowL(false), 200)} onKeyDown={e => e.key === "Enter" && handleSearch(1)} placeholder="City or location..." style={{ width: "100%", border: "none", outline: "none", background: "transparent", padding: "13px 13px 13px 40px", fontSize: 14, color: "#0A0F1E", fontFamily: "inherit" }} />
-              {showL && (
-                <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #E8EEFF", borderRadius: "0 0 14px 14px", boxShadow: "0 16px 48px rgba(0,57,255,0.1)", maxHeight: 200, overflowY: "auto", zIndex: 300 }}>
-                  {displayLocs.slice(0, 8).map(s => (
-                    <div key={s} onMouseDown={() => { setLoc(s); setShowL(false) }} style={{ padding: "11px 16px", cursor: "pointer", fontSize: 14, color: "#0A0F1E", borderBottom: "1px solid rgba(232,238,255,0.5)", display: "flex", alignItems: "center", gap: 8 }}
-                      onMouseEnter={e => e.currentTarget.style.background = "#0057FF08"}
-                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                    ><span style={{ fontSize: 12, color: "#9CA3B8" }}>📍</span>{s}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ width: 1, height: 36, background: "#E8EEFF", flexShrink: 0 }} />
-            <button onClick={() => setShowFilters(f => !f)} style={{ background: "none", border: "none", color: showFilters ? "#0057FF" : "#4B5675", padding: "0 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", height: "100%", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
-              ⚙️ {activeCount > 0 && <span style={{ background: "#0057FF", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 9, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{activeCount}</span>}
+            {/* Job role dropdown */}
+            <SearchDropdown
+              value={q}
+              placeholder="Job title or role"
+              icon="🔍"
+              options={ALL_JOBS}
+              onSelect={(val) => { setQ(val); handleSearch(1, val, loc) }}
+            />
+
+            <div style={{ width: 1, background: "#E8EEFF", flexShrink: 0 }} />
+
+            {/* Location dropdown */}
+            <SearchDropdown
+              value={loc}
+              placeholder="Location"
+              icon="📍"
+              options={ALL_LOCATIONS}
+              onSelect={(val) => { setLoc(val); handleSearch(1, q, val) }}
+            />
+
+            <div style={{ width: 1, background: "#E8EEFF", flexShrink: 0 }} />
+
+            {/* Filters toggle */}
+            <button onClick={() => setShowFilters(f => !f)} style={{ background: showFilters ? "#0057FF0D" : "none", border: "none", color: showFilters ? "#0057FF" : "#4B5675", padding: "0 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap", flexShrink: 0 }}>
+              ⚙️ Filters
+              {activeCount > 0 && <span style={{ background: "#0057FF", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 9, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{activeCount}</span>}
             </button>
-            <button onClick={() => handleSearch(1)} disabled={loading || !q.trim()} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: "0 0 14px 0", padding: "13px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit", opacity: !q.trim() ? 0.6 : 1 }}>
-              Search
+
+            {/* Search button */}
+            <button onClick={() => handleSearch(1)} disabled={loading} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: "0 16px 16px 0", padding: "0 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "inherit", minHeight: 54, flexShrink: 0 }}>
+              {loading ? "⏳" : "Search →"}
             </button>
           </div>
         </div>
 
         {/* Toggles */}
-        <div style={{ display: "flex", gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 16, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
           {[
-            { label: "🎓 Fresher only", val: fresherOnly, set: setFresherOnly, color: "#00D68F" },
-            { label: "✓ Verified only", val: verifiedOnly, set: setVerifiedOnly, color: "#00D68F" },
+            { label: "🎓 Fresher friendly only", val: fresherOnly, set: setFresherOnly, color: "#FF6B35" },
+            { label: "✓ UK Gov verified only", val: verifiedOnly, set: setVerifiedOnly, color: "#00D68F" },
           ].map(t => (
-            <div key={t.label} style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer" }} onClick={() => t.set(v => !v)}>
-              <div style={{ width: 34, height: 18, borderRadius: 9, background: t.val ? t.color : "#E8EEFF", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
-                <div style={{ position: "absolute", top: 2, left: t.val ? 17 : 2, width: 14, height: 14, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+            <div key={t.label} onClick={() => { t.set(v => !v); setTimeout(() => handleSearch(1), 100) }} style={{ display: "flex", alignItems: "center", gap: 7, cursor: "pointer" }}>
+              <div style={{ width: 36, height: 20, borderRadius: 10, background: t.val ? t.color : "#E8EEFF", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+                <div style={{ position: "absolute", top: 2, left: t.val ? 18 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 4px rgba(0,0,0,0.15)" }} />
               </div>
               <span style={{ fontSize: 13, color: t.val ? t.color : "#4B5675", fontWeight: 600 }}>{t.label}</span>
             </div>
           ))}
+          {(q || loc) && (
+            <button onClick={() => { setQ(""); setLoc(""); handleSearch(1, "", "") }} style={{ background: "none", border: "none", color: "#9CA3B8", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>
+              Clear search
+            </button>
+          )}
         </div>
 
-        {/* Filters */}
+        {/* Filters panel */}
         {showFilters && (
-          <div style={{ background: "#fff", border: "1.5px solid #E8EEFF", borderRadius: 14, padding: "18px", marginBottom: 14, boxShadow: "0 4px 24px rgba(0,57,255,0.05)" }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 14 }}>
+          <div style={{ background: "#fff", border: "1.5px solid #E8EEFF", borderRadius: 14, padding: "18px 20px", marginBottom: 16, boxShadow: "0 4px 24px rgba(0,57,255,0.05)" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 20, marginBottom: 14 }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 7 }}>Contract</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{["Full-time", "Part-time", "Contract"].map(v => <button key={v} onClick={() => setFilter("jobType", v)} style={pillStyle(filters.jobType === v)}>{v}</button>)}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Contract Type</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{["Full-time", "Part-time", "Contract", "Permanent"].map(v => <button key={v} onClick={() => setFilter("jobType", v)} style={pillStyle(filters.jobType === v)}>{v}</button>)}</div>
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 7 }}>Sort</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Sort By</div>
                 <div style={{ display: "flex", gap: 6 }}>{["Score", "Date", "Salary"].map(v => <button key={v} onClick={() => setFilter("sortBy", v)} style={pillStyle(filters.sortBy === v)}>{v}</button>)}</div>
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 7 }}>Source</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Source</div>
                 <div style={{ display: "flex", gap: 6 }}>{["Reed", "Adzuna"].map(v => <button key={v} onClick={() => setFilter("source", v)} style={pillStyle(filters.source === v)}>{v}</button>)}</div>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <input value={filters.salaryMin} onChange={e => setFilter("salaryMin", e.target.value)} placeholder="Min salary" type="number" style={{ flex: 1, border: "1.5px solid #E8EEFF", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#0A0F1E", background: "#F8FAFF", fontFamily: "inherit", outline: "none" }} />
-              <span style={{ color: "#9CA3B8", fontSize: 13 }}>to</span>
-              <input value={filters.salaryMax} onChange={e => setFilter("salaryMax", e.target.value)} placeholder="Max salary" type="number" style={{ flex: 1, border: "1.5px solid #E8EEFF", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#0A0F1E", background: "#F8FAFF", fontFamily: "inherit", outline: "none" }} />
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 }}>Salary Range (£)</div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <input value={filters.salaryMin} onChange={e => setFilter("salaryMin", e.target.value)} placeholder="Min e.g. 25000" type="number" style={{ flex: 1, border: "1.5px solid #E8EEFF", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#0A0F1E", background: "#F8FAFF", fontFamily: "inherit", outline: "none" }} />
+                <span style={{ color: "#9CA3B8" }}>—</span>
+                <input value={filters.salaryMax} onChange={e => setFilter("salaryMax", e.target.value)} placeholder="Max e.g. 80000" type="number" style={{ flex: 1, border: "1.5px solid #E8EEFF", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "#0A0F1E", background: "#F8FAFF", fontFamily: "inherit", outline: "none" }} />
+                <button onClick={() => handleSearch(1)} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Apply</button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Verifying */}
-        {verifying && <div style={{ background: "#00D68F0D", border: "1px solid #00D68F25", borderRadius: 10, padding: "10px 14px", marginBottom: 12, fontSize: 13, color: "#00D68F", fontWeight: 600 }}>🔍 Verifying against UK Home Office sponsor register...</div>}
+        {/* Verifying indicator */}
+        {verifying && (
+          <div style={{ background: "#00D68F0D", border: "1px solid #00D68F25", borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: "#00D68F", fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 16, height: 16, border: "2px solid #00D68F", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+            Verifying employers against UK Home Office sponsor register...
+          </div>
+        )}
 
-        {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", marginBottom: 12, color: "#DC2626", fontSize: 13 }}>❌ {error}</div>}
+        {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "12px 16px", marginBottom: 14, color: "#DC2626", fontSize: 13 }}>❌ {error}</div>}
 
-        {/* Stats */}
-        {searched && jobs.length > 0 && (
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
-            {[
-              { label: "Found", value: stats.total, color: "#0057FF" },
-              { label: "UK Gov Verified", value: stats.verified, color: "#00D68F" },
-              { label: "Fresher Friendly", value: stats.fresher, color: "#FF6B35" },
-            ].map(s => (
-              <div key={s.label} style={{ background: "#fff", border: `1px solid ${s.color}20`, borderRadius: 10, padding: "8px 14px" }}>
-                <span style={{ fontSize: 18, fontWeight: 900, color: s.color, display: "block" }}>{s.value}</span>
-                <span style={{ fontSize: 10, color: "#9CA3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>{s.label}</span>
+        {/* Stats bar */}
+        {jobs.length > 0 && (
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              {[
+                { label: "Results", value: stats.total, color: "#0057FF" },
+                { label: "Verified", value: stats.verified, color: "#00D68F" },
+                { label: "Fresher", value: stats.fresher, color: "#FF6B35" },
+              ].map(s => (
+                <div key={s.label} style={{ background: "#fff", border: `1px solid ${s.color}20`, borderRadius: 10, padding: "7px 14px", display: "flex", gap: 6, alignItems: "center" }}>
+                  <span style={{ fontSize: 16, fontWeight: 900, color: s.color }}>{s.value}</span>
+                  <span style={{ fontSize: 11, color: "#9CA3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 }}>{s.label}</span>
+                </div>
+              ))}
+            </div>
+            {q && <span style={{ fontSize: 13, color: "#4B5675" }}>for <strong>"{q}"</strong>{loc ? ` in <strong>${loc}</strong>` : ""}</span>}
+          </div>
+        )}
+
+        {/* Loading skeleton */}
+        {loading && jobs.length === 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {[...Array(6)].map((_, i) => (
+              <div key={i} style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 16, padding: "20px 22px", animation: "pulse 1.5s ease infinite" }}>
+                <div style={{ height: 14, background: "#E8EEFF", borderRadius: 6, width: "60%", marginBottom: 10 }} />
+                <div style={{ height: 12, background: "#E8EEFF", borderRadius: 6, width: "40%", marginBottom: 8 }} />
+                <div style={{ height: 10, background: "#E8EEFF", borderRadius: 6, width: "30%" }} />
               </div>
             ))}
           </div>
@@ -329,35 +420,28 @@ export default function JobsPage() {
         {jobs.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {jobs.map(job => <JobCard key={job.id} job={job} onSave={handleSave} saved={savedJobs.has(job.id)} navigate={navigate} />)}
-            <button onClick={() => handleSearch(page + 1)} disabled={loading} style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: "13px", color: "#4B5675", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 4 }}>
-              {loading ? "Loading…" : "Load more →"}
-            </button>
+            <button onClick={() => handleSearch(page + 1)} disabled={loading} style={{ background: "#fff", border: "1.5px solid #E8EEFF", borderRadius: 12, padding: "14px", color: "#4B5675", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 4, transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#F8FAFF"; e.currentTarget.style.borderColor = "#0057FF30" }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#E8EEFF" }}
+            >{loading ? "Loading more..." : "Load more results →"}</button>
           </div>
         )}
 
-        {/* Empty state */}
-        {searched && jobs.length === 0 && !loading && (
-          <div style={{ textAlign: "center", padding: "48px 20px" }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>🔎</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#0A0F1E", marginBottom: 8 }}>No sponsored jobs found</div>
-            <div style={{ fontSize: 14, color: "#4B5675" }}>Try a broader search or turn off the verified-only filter.</div>
-          </div>
-        )}
-
-        {/* Before search */}
-        {!searched && !loading && (
-          <div style={{ textAlign: "center", padding: "48px 20px" }}>
-            <div style={{ fontSize: 52, marginBottom: 16 }}>🏛️</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#0A0F1E", marginBottom: 10 }}>Start typing to search</div>
-            <div style={{ fontSize: 14, color: "#4B5675", maxWidth: 400, margin: "0 auto", lineHeight: 1.7 }}>Results appear automatically as you type. Every result verified against 125,000+ UK Home Office licensed sponsors.</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 20 }}>
-              {["Software Engineer", "Registered Nurse", "Data Scientist", "Cyber Security Analyst", "Civil Engineer"].map(t => (
-                <button key={t} onClick={() => setQ(t)} style={{ background: "#fff", border: "1px solid #E8EEFF", color: "#4B5675", borderRadius: 100, padding: "7px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: "inherit" }}>{t}</button>
-              ))}
-            </div>
+        {/* Empty */}
+        {!loading && jobs.length === 0 && (
+          <div style={{ textAlign: "center", padding: "60px 20px" }}>
+            <div style={{ fontSize: 48, marginBottom: 14 }}>🔎</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#0A0F1E", marginBottom: 8 }}>No jobs found</div>
+            <div style={{ fontSize: 14, color: "#4B5675", marginBottom: 20 }}>Try a different role or location, or turn off the verified-only filter.</div>
+            <button onClick={() => handleSearch(1, "", "")} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Show all sponsored jobs</button>
           </div>
         )}
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+      `}</style>
     </div>
   )
 }
