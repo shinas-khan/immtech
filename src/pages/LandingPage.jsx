@@ -575,31 +575,92 @@ export default function LandingPage() {
         </Reveal>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────── */}
+     {/* ── FOOTER ───────────────────────────────────────── */}
       <footer style={{ background: "#0A0F1E", padding: mob ? "52px 5% 32px" : "80px 6% 40px" }}>
         <div style={{ maxWidth: 1140, margin: "0 auto" }}>
-          <div style={{ marginBottom: mob ? 36 : 52 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #0057FF, #00C2FF)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ color: "#fff", fontWeight: 900, fontSize: 13 }}>IT</span>
+
+          {/* Top row — logo + newsletter */}
+          <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "1.5fr 1fr", gap: mob ? 32 : 60, marginBottom: mob ? 40 : 56, paddingBottom: mob ? 32 : 48, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 11, background: "linear-gradient(135deg, #0057FF, #00C2FF)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ color: "#fff", fontWeight: 900, fontSize: 13 }}>IT</span>
+                </div>
+                <span style={{ fontWeight: 900, fontSize: 21, color: "#fff", letterSpacing: -0.5 }}>IMMTECH</span>
               </div>
-              <span style={{ fontWeight: 900, fontSize: 20, color: "#fff", letterSpacing: -0.5 }}>IMMTECH</span>
+              <p style={{ color: "rgba(255,255,255,0.38)", fontSize: 14, lineHeight: 1.85, maxWidth: 300, margin: "0 0 20px" }}>
+                UK's first AI-powered visa sponsorship job platform. Built by international talent, for international talent.
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                {[
+                  { label: "🇬🇧 UK Based" },
+                  { label: "🔒 GDPR Compliant" },
+                  { label: "🤖 AI Powered" },
+                ].map(b => (
+                  <span key={b.label} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 100, padding: "4px 10px", fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>{b.label}</span>
+                ))}
+              </div>
             </div>
-            <p style={{ color: "rgba(255,255,255,0.38)", fontSize: 14, lineHeight: 1.8, maxWidth: 300, margin: 0 }}>
-              UK's first AI-powered visa sponsorship job platform. Built by international talent, for international talent.
-            </p>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "#fff", marginBottom: 8 }}>Get sponsored job alerts</div>
+              <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13, marginBottom: 14 }}>Be the first to know when new verified sponsored roles go live.</p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input placeholder="your@email.com" style={{ flex: 1, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 9, padding: "11px 14px", fontSize: 13, color: "#fff", fontFamily: "inherit", outline: "none", minWidth: 0 }} onFocus={e => e.target.style.borderColor = "#0057FF"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.12)"} />
+                <button onClick={() => navigate("/auth")} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: 9, padding: "11px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+                  Get Alerts →
+                </button>
+              </div>
+            </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr 1fr" : "1fr 1fr 1fr", gap: mob ? 28 : 40, marginBottom: mob ? 36 : 52 }}>
+
+          {/* Links grid */}
+          <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr 1fr" : "repeat(4, 1fr)", gap: mob ? 28 : 40, marginBottom: mob ? 36 : 52 }}>
             {[
-              { title: "Platform", links: [{ label: "Find Sponsored Jobs", path: "/jobs" }, { label: "Visa Checker", path: "/visa-checker" }, { label: "For Employers", path: "/employers" }, { label: "Sign In", path: "/auth" }] },
-              { title: "Company", links: [{ label: "About Us", path: "/" }, { label: "Our Mission", path: "/" }, { label: "Careers", path: "/" }, { label: "Contact", path: "/" }] },
-              { title: "Legal", links: [{ label: "Privacy Policy", path: "/" }, { label: "Terms of Service", path: "/" }, { label: "Cookie Policy", path: "/" }, { label: "GDPR", path: "/" }] },
+              {
+                title: "Platform",
+                links: [
+                  { label: "Find Sponsored Jobs", path: "/jobs" },
+                  { label: "Visa Checker", path: "/visa-checker" },
+                  { label: "For Employers", path: "/employers" },
+                  { label: "AI CV Scoring", path: "/profile" },
+                  { label: "Job Alerts", path: "/notifications" },
+                ]
+              },
+              {
+                title: "Company",
+                links: [
+                  { label: "About Us", path: "/about" },
+                  { label: "Our Mission", path: "/mission" },
+                  { label: "Careers", path: "/careers" },
+                  { label: "Contact", path: "/contact" },
+                  { label: "Blog", path: "/about" },
+                ]
+              },
+              {
+                title: "Resources",
+                links: [
+                  { label: "UK Visa Guide", path: "/visa-checker" },
+                  { label: "Sponsor Register", path: "/jobs" },
+                  { label: "SOC Code Checker", path: "/visa-checker" },
+                  { label: "Salary Thresholds", path: "/visa-checker" },
+                  { label: "Immigration FAQs", path: "/about" },
+                ]
+              },
+              {
+                title: "Legal",
+                links: [
+                  { label: "Privacy Policy", path: "/privacy-policy" },
+                  { label: "Terms of Service", path: "/terms-of-service" },
+                  { label: "Cookie Policy", path: "/cookie-policy" },
+                  { label: "GDPR", path: "/gdpr" },
+                ]
+              },
             ].map(col => (
               <div key={col.title}>
-                <h4 style={{ color: "#fff", fontWeight: 700, marginBottom: 16, fontSize: 14 }}>{col.title}</h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <h4 style={{ color: "#fff", fontWeight: 700, marginBottom: 16, fontSize: 13, textTransform: "uppercase", letterSpacing: 0.8 }}>{col.title}</h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
                   {col.links.map(l => (
-                    <span key={l.label} onClick={() => navigate(l.path)} style={{ color: "rgba(255,255,255,0.38)", fontSize: 14, cursor: "pointer", transition: "color 0.2s" }}
+                    <span key={l.label} onClick={() => navigate(l.path)} style={{ color: "rgba(255,255,255,0.38)", textDecoration: "none", fontSize: 14, cursor: "pointer", transition: "color 0.2s" }}
                       onMouseEnter={e => e.currentTarget.style.color = "#fff"}
                       onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.38)"}
                     >{l.label}</span>
@@ -608,9 +669,38 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 24, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-            <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 13 }}>© 2025 IMMTECH Ltd. All rights reserved.</span>
-            <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 13 }}>🌍 Built for Global Talent · Made in 🇬🇧 UK</span>
+
+          {/* Stats row */}
+          <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr 1fr" : "repeat(4,1fr)", gap: 16, marginBottom: mob ? 32 : 48, padding: mob ? "20px" : "28px 32px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16 }}>
+            {[
+              { value: "125,284", label: "Verified UK Sponsors", icon: "🏛️" },
+              { value: "50,000+", label: "Sponsored Jobs", icon: "💼" },
+              { value: "Free", label: "To Get Started", icon: "✅" },
+              { value: "AI", label: "Powered Platform", icon: "🤖" },
+            ].map(s => (
+              <div key={s.label} style={{ textAlign: "center" }}>
+                <div style={{ fontSize: mob ? 18 : 22, marginBottom: 4 }}>{s.icon}</div>
+                <div style={{ fontSize: mob ? 16 : 20, fontWeight: 900, color: "#fff", letterSpacing: -0.5 }}>{s.value}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom bar */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 13 }}>© 2025 IMMTECH Ltd. Registered in England & Wales. All rights reserved.</span>
+            <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+              {[
+                { label: "Privacy", path: "/privacy-policy" },
+                { label: "Terms", path: "/terms-of-service" },
+                { label: "Cookies", path: "/cookie-policy" },
+              ].map(l => (
+                <span key={l.label} onClick={() => navigate(l.path)} style={{ color: "rgba(255,255,255,0.28)", fontSize: 13, cursor: "pointer", transition: "color 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#fff"}
+                  onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.28)"}
+                >{l.label}</span>
+              ))}
+            </div>
           </div>
         </div>
       </footer>
