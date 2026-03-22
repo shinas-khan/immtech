@@ -4,52 +4,14 @@ import { supabase } from "../lib/supabase"
 import { ALL_JOBS, NATIONALITIES, INDUSTRIES } from "../lib/constants"
 import Nav from "../components/Nav"
 
-const CLAUDE_MODEL = "claude-sonnet-4-20250514"
-
 async function scoreCV(cvText, jobRole) {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch("/api/score-cv", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": import.meta.env.VITE_ANTHROPIC_KEY,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model: CLAUDE_MODEL,
-      max_tokens: 1000,
-      messages: [{
-        role: "user",
-        content: `You are a UK immigration and recruitment expert. Analyse this CV for someone applying for "${jobRole || 'a skilled worker'}" role in the UK with visa sponsorship.
-
-Score these 4 areas from 0-100 and give specific feedback:
-1. UK Format Compliance - Does it follow UK CV standards (no photo, no DOB, reverse chronological, 2 pages max)?
-2. Visa Sponsorship Keywords - Does it contain keywords that UK visa sponsors look for?
-3. ATS Compatibility - Is it ATS-friendly (clear headings, standard fonts, no tables/graphics)?
-4. Sponsor Company Match - Does the experience match what UK sponsor employers typically want?
-
-CV TEXT:
-${cvText.slice(0, 3000)}
-
-Respond ONLY with this exact JSON, no other text:
-{
-  "ukFormat": 75,
-  "visaKeywords": 60,
-  "atsScore": 85,
-  "sponsorMatch": 70,
-  "overallScore": 72,
-  "ukFormatFeedback": "Your CV follows most UK standards but...",
-  "visaKeywordsFeedback": "Add these keywords: Certificate of Sponsorship, Skilled Worker...",
-  "atsFeedback": "Good structure but remove the table in skills section...",
-  "sponsorMatchFeedback": "Your experience aligns well with NHS and tech sponsors...",
-  "topImprovements": ["Add a professional summary", "Remove date of birth", "Add relevant UK certifications"]
-}`
-      }]
-    })
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cvText, jobRole })
   })
-  const data = await response.json()
-  const text = data.content?.[0]?.text || ""
-  return JSON.parse(text.replace(/```json|```/g, "").trim())
+  if (!response.ok) throw new Error("API error")
+  return await response.json()
 }
 
 export default function ProfilePage() {
@@ -98,34 +60,16 @@ export default function ProfilePage() {
   }
 
   const handleCvUpload = async (file) => {
-  if (!file) return
-  setCvName(file.name); setCvScore(null); setScoreError("")
-  try {
-    // Extract text based on file type
-    let text = ""
-    if (file.name.endsWith(".txt")) {
-      text = await file.text()
-    } else {
-      // For .docx and .pdf — read as much text as possible
-      text = await file.text().catch(() => "")
-      if (!text || text.length < 50) {
-        // Binary file — extract readable text
-        const buffer = await file.arrayBuffer()
-        const bytes = new Uint8Array(buffer)
-        text = Array.from(bytes)
-          .map(b => b > 31 && b < 127 ? String.fromCharCode(b) : " ")
-          .join("")
-          .replace(/\s+/g, " ")
-          .trim()
-      }
-    }
+    if (!file) return
+    setCvName(file.name); setCvScore(null); setScoreError("")
+    const text = await file.text()
     setCvText(text)
-    // Upload to storage
-    const path = `${user.id}/cv-${Date.now()}.${file.name.split(".").pop()}`
-    await supabase.storage.from("cvs").upload(path, file)
-    await supabase.from("profiles").upsert({ id: user.id, cv_path: path, cv_name: file.name })
-  } catch (err) { console.error(err) }
-}
+    try {
+      const path = `${user.id}/cv-${Date.now()}.${file.name.split(".").pop()}`
+      await supabase.storage.from("cvs").upload(path, file)
+      await supabase.from("profiles").upsert({ id: user.id, cv_path: path, cv_name: file.name })
+    } catch (err) { console.error(err) }
+  }
 
   const handleScoreCV = async () => {
     if (!cvText) { setScoreError("Please upload your CV first"); return }
