@@ -8,6 +8,10 @@ import NotificationsPage from "./pages/NotificationsPage"
 import VisaCheckerPage from "./pages/VisaCheckerPage"
 import EmployersPage from "./pages/EmployersPage"
 import EmployerProfilePage from "./pages/EmployerProfilePage"
+import AboutPage from "./pages/AboutPage"
+import ContactPage from "./pages/ContactPage"
+import CareersPage from "./pages/CareersPage"
+import { PrivacyPage, TermsPage, CookiePage, GDPRPage, MissionPage } from "./pages/LegalPages"
 
 export default function App() {
   return (
@@ -23,26 +27,6 @@ export default function App() {
           ::-webkit-scrollbar-track { background: #F8FAFF; }
           ::-webkit-scrollbar-thumb { background: #0057FF45; border-radius: 3px; }
           input::placeholder { color: #9CA3B8; }
-
-          @media (max-width: 768px) {
-            .grid-3 { grid-template-columns: 1fr !important; }
-            .grid-2 { grid-template-columns: 1fr !important; }
-            .grid-4 { grid-template-columns: 1fr 1fr !important; }
-            .hide-mobile { display: none !important; }
-            .nav-links { display: none !important; }
-            .hero-section { padding: 120px 5% 80px !important; }
-            .section-pad { padding: 80px 5% !important; }
-            .search-bar { flex-wrap: wrap !important; }
-            .pricing-grid { grid-template-columns: 1fr !important; }
-            .footer-grid { grid-template-columns: 1fr 1fr !important; }
-            .card-pad { padding: 24px 20px !important; }
-            .profile-grid { grid-template-columns: 1fr !important; }
-          }
-          @media (max-width: 480px) {
-            .grid-4 { grid-template-columns: 1fr !important; }
-            .footer-grid { grid-template-columns: 1fr !important; }
-            .stats-grid { grid-template-columns: 1fr 1fr !important; }
-          }
         `}</style>
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -54,6 +38,14 @@ export default function App() {
           <Route path="/visa-checker" element={<VisaCheckerPage />} />
           <Route path="/employers" element={<EmployersPage />} />
           <Route path="/employer/:name" element={<EmployerProfilePage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/careers" element={<CareersPage />} />
+          <Route path="/mission" element={<MissionPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPage />} />
+          <Route path="/terms-of-service" element={<TermsPage />} />
+          <Route path="/cookie-policy" element={<CookiePage />} />
+          <Route path="/gdpr" element={<GDPRPage />} />
         </Routes>
       </div>
     </BrowserRouter>
