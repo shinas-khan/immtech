@@ -9,7 +9,12 @@ const CLAUDE_MODEL = "claude-sonnet-4-20250514"
 async function scoreCV(cvText, jobRole) {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": import.meta.env.VITE_ANTHROPIC_KEY,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: 1000,
@@ -93,16 +98,34 @@ export default function ProfilePage() {
   }
 
   const handleCvUpload = async (file) => {
-    if (!file) return
-    setCvName(file.name); setCvScore(null); setScoreError("")
-    const text = await file.text()
+  if (!file) return
+  setCvName(file.name); setCvScore(null); setScoreError("")
+  try {
+    // Extract text based on file type
+    let text = ""
+    if (file.name.endsWith(".txt")) {
+      text = await file.text()
+    } else {
+      // For .docx and .pdf — read as much text as possible
+      text = await file.text().catch(() => "")
+      if (!text || text.length < 50) {
+        // Binary file — extract readable text
+        const buffer = await file.arrayBuffer()
+        const bytes = new Uint8Array(buffer)
+        text = Array.from(bytes)
+          .map(b => b > 31 && b < 127 ? String.fromCharCode(b) : " ")
+          .join("")
+          .replace(/\s+/g, " ")
+          .trim()
+      }
+    }
     setCvText(text)
-    try {
-      const path = `${user.id}/cv-${Date.now()}.${file.name.split(".").pop()}`
-      await supabase.storage.from("cvs").upload(path, file)
-      await supabase.from("profiles").upsert({ id: user.id, cv_path: path, cv_name: file.name })
-    } catch (err) { console.error(err) }
-  }
+    // Upload to storage
+    const path = `${user.id}/cv-${Date.now()}.${file.name.split(".").pop()}`
+    await supabase.storage.from("cvs").upload(path, file)
+    await supabase.from("profiles").upsert({ id: user.id, cv_path: path, cv_name: file.name })
+  } catch (err) { console.error(err) }
+}
 
   const handleScoreCV = async () => {
     if (!cvText) { setScoreError("Please upload your CV first"); return }
