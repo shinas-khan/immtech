@@ -1,0 +1,204 @@
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { supabase } from "../lib/supabase"
+import Nav from "../components/Nav"
+
+function useW() {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1200)
+  useEffect(() => { const fn = () => setW(window.innerWidth); window.addEventListener("resize", fn); return () => window.removeEventListener("resize", fn) }, [])
+  return w
+}
+
+const ROLE_RECOMMENDATIONS = {
+  "Technology & Software": [
+    { role: "Software Engineer", demand: "Very High", avgSalary: "£52,000", sponsors: 4200, reason: "UK tech sector has severe shortage. Top sponsors include Amazon, Google, Microsoft, IBM." },
+    { role: "Data Scientist", demand: "Very High", avgSalary: "£55,000", sponsors: 2800, reason: "AI boom driving massive demand. Financial services, NHS and tech companies all sponsoring." },
+    { role: "Cyber Security Analyst", demand: "High", avgSalary: "£48,000", sponsors: 1900, reason: "Critical shortage of cyber talent in UK. Government and financial sectors actively sponsoring." },
+  ],
+  "Healthcare & Medicine": [
+    { role: "Registered Nurse", demand: "Critical", avgSalary: "£32,000", sponsors: 8500, reason: "NHS has over 40,000 nursing vacancies. Fastest visa route via Health & Care Worker Visa." },
+    { role: "Pharmacist", demand: "Very High", avgSalary: "£42,000", sponsors: 3200, reason: "High demand across NHS and private sector. Health & Care Worker Visa available." },
+    { role: "Physiotherapist", demand: "High", avgSalary: "£35,000", sponsors: 2100, reason: "Growing demand in NHS and private clinics. Health & Care Worker Visa eligible." },
+  ],
+  "Engineering & Manufacturing": [
+    { role: "Civil Engineer", demand: "High", avgSalary: "£38,000", sponsors: 1800, reason: "Major UK infrastructure projects driving demand. HS2, housing developments need engineers." },
+    { role: "Mechanical Engineer", demand: "High", avgSalary: "£36,000", sponsors: 1600, reason: "Manufacturing and automotive sectors actively sponsoring." },
+    { role: "Electrical Engineer", demand: "High", avgSalary: "£37,000", sponsors: 1500, reason: "Renewable energy boom creating strong demand for electrical engineers." },
+  ],
+  "Finance & Banking": [
+    { role: "Financial Analyst", demand: "High", avgSalary: "£45,000", sponsors: 2200, reason: "London's financial hub needs global talent. Major banks all on sponsor register." },
+    { role: "Accountant", demand: "Medium", avgSalary: "£38,000", sponsors: 3500, reason: "Strong demand across all sectors. Big Four and mid-tier firms all sponsoring." },
+    { role: "Risk Analyst", demand: "High", avgSalary: "£50,000", sponsors: 1400, reason: "Financial regulation driving demand. Banks and insurance companies sponsoring." },
+  ],
+  "Research & Science": [
+    { role: "Research Scientist", demand: "High", avgSalary: "£42,000", sponsors: 1200, reason: "UK universities and pharma companies actively sponsoring. Global Talent Visa also available." },
+    { role: "Data Scientist", demand: "Very High", avgSalary: "£55,000", sponsors: 2800, reason: "Cross-sector demand. Pharma, finance and tech all competing for data scientists." },
+    { role: "Biomedical Scientist", demand: "High", avgSalary: "£38,000", sponsors: 900, reason: "NHS labs and private healthcare actively recruiting internationally." },
+  ],
+}
+
+const DEFAULT_RECS = [
+  { role: "Software Engineer", demand: "Very High", avgSalary: "£52,000", sponsors: 4200, reason: "UK's most in-demand sponsored role. Thousands of verified employers actively hiring." },
+  { role: "Registered Nurse", demand: "Critical", avgSalary: "£32,000", sponsors: 8500, reason: "NHS has 40,000+ vacancies. Fastest sponsorship via Health & Care Worker Visa." },
+  { role: "Data Analyst", demand: "Very High", avgSalary: "£38,000", sponsors: 2800, reason: "Every industry needs data analysts. Cross-sector demand means more sponsor options." },
+]
+
+const DEMAND_COLORS = { "Critical": "#DC2626", "Very High": "#FF6B35", "High": "#0057FF", "Medium": "#7C3AED" }
+const DEMAND_BG = { "Critical": "#FEF2F2", "Very High": "#FFF7ED", "High": "#EFF6FF", "Medium": "#F5F3FF" }
+
+export default function ProfileCheckPage() {
+  const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [recommendations, setRecommendations] = useState([])
+  const navigate = useNavigate()
+  const w = useW()
+  const mob = w < 768
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { navigate("/auth"); return }
+      setUser(user)
+      const { data: p } = await supabase.from("profiles").select("*").eq("id", user.id).single()
+      setProfile(p)
+      // Generate recommendations based on profile
+      if (p?.industry && ROLE_RECOMMENDATIONS[p.industry]) {
+        setRecommendations(ROLE_RECOMMENDATIONS[p.industry])
+      } else {
+        setRecommendations(DEFAULT_RECS)
+      }
+      setLoading(false)
+    }
+    load()
+  }, [navigate])
+
+  if (loading) return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8FAFF" }}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 40, marginBottom: 12, animation: "spin 1s linear infinite", display: "inline-block" }}>🤖</div>
+        <div style={{ color: "#4B5675", fontSize: 15 }}>Analysing your profile...</div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+      </div>
+    </div>
+  )
+
+  const completionFields = ["full_name","nationality","current_location","job_role","visa_status","bio","salary_expectation","industry"]
+  const completedCount = completionFields.filter(f => profile?.[f]).length
+  const completionPct = Math.round((completedCount / completionFields.length) * 100)
+  const missingFields = completionFields.filter(f => !profile?.[f]).map(f => f.replace(/_/g, " "))
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#F8FAFF", fontFamily: "inherit" }}>
+      <Nav />
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: mob ? "86px 4% 40px" : "100px 6% 60px" }}>
+
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: mob ? 28 : 48 }}>
+          <div style={{ display: "inline-block", background: "#7C3AED0D", border: "1px solid #7C3AED22", borderRadius: 100, padding: "7px 18px", color: "#7C3AED", fontSize: mob ? 12 : 13, fontWeight: 700, marginBottom: 16 }}>🤖 AI Profile Check</div>
+          <h1 style={{ fontSize: mob ? 24 : 48, fontWeight: 900, color: "#0A0F1E", margin: "0 0 14px", letterSpacing: -1.5, lineHeight: 1.1 }}>
+            Your Top 3<br /><span style={{ color: "#0057FF" }}>Sponsored Job Matches</span>
+          </h1>
+          <p style={{ color: "#4B5675", fontSize: mob ? 14 : 17, maxWidth: 500, margin: "0 auto" }}>
+            Based on your profile, visa status and industry — here are the 3 best sponsored roles available for you right now.
+          </p>
+        </div>
+
+        {/* Profile summary */}
+        <div style={{ background: "linear-gradient(135deg, #0038CC, #0057FF)", borderRadius: 20, padding: mob ? "20px" : "28px 32px", marginBottom: 24, display: "flex", gap: 20, alignItems: "center", flexDirection: mob ? "column" : "row", textAlign: mob ? "center" : "left" }}>
+          <div style={{ width: mob ? 60 : 72, height: mob ? 60 : 72, borderRadius: "50%", background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: mob ? 24 : 28, fontWeight: 900, color: "#fff", flexShrink: 0 }}>
+            {profile?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: mob ? 18 : 22, fontWeight: 900, color: "#fff", marginBottom: 4 }}>{profile?.full_name || "Your Profile"}</div>
+            <div style={{ color: "rgba(255,255,255,0.75)", fontSize: mob ? 13 : 15 }}>
+              {profile?.job_role || "No role set"} · {profile?.nationality || "Nationality not set"} · {profile?.visa_status || "Visa status not set"}
+            </div>
+            {profile?.industry && <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, marginTop: 4 }}>Industry: {profile.industry}</div>}
+          </div>
+          <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 14, padding: "14px 18px", textAlign: "center", flexShrink: 0, minWidth: mob ? "100%" : 110 }}>
+            <div style={{ fontSize: mob ? 28 : 32, fontWeight: 900, color: completionPct >= 80 ? "#00D68F" : "#FFD700" }}>{completionPct}%</div>
+            <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11, marginTop: 2 }}>Profile Complete</div>
+          </div>
+        </div>
+
+        {/* Profile completion warning */}
+        {completionPct < 70 && (
+          <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 14, padding: "16px 20px", marginBottom: 24, display: "flex", gap: 12, alignItems: "flex-start", flexDirection: mob ? "column" : "row" }}>
+            <span style={{ fontSize: 24, flexShrink: 0 }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "#C2410C", marginBottom: 6 }}>Complete your profile for better matches</div>
+              <div style={{ color: "#4B5675", fontSize: 13, marginBottom: 10 }}>
+                Missing: {missingFields.slice(0, 4).join(", ")}. A complete profile gets 3x more accurate recommendations.
+              </div>
+              <button onClick={() => navigate("/profile")} style={{ background: "#FF6B35", color: "#fff", border: "none", borderRadius: 8, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                Complete Profile →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Top 3 recommendations */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 32 }}>
+          {recommendations.map((rec, i) => (
+            <div key={rec.role} style={{ background: "#fff", border: `1.5px solid ${i === 0 ? "#0057FF30" : "#E8EEFF"}`, borderRadius: 20, padding: mob ? "20px" : "28px 32px", position: "relative", overflow: "hidden" }}>
+              {i === 0 && (
+                <div style={{ position: "absolute", top: 0, right: 0, background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", fontSize: 11, fontWeight: 800, padding: "6px 16px", borderRadius: "0 20px 0 12px" }}>
+                  🏆 Best Match
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexDirection: mob ? "column" : "row" }}>
+                <div style={{ width: 52, height: 52, borderRadius: "50%", background: `${i === 0 ? "#0057FF" : i === 1 ? "#00D68F" : "#7C3AED"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 900, color: "#fff", flexShrink: 0 }}>
+                  {i + 1}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+                    <h3 style={{ fontSize: mob ? 17 : 20, fontWeight: 900, color: "#0A0F1E", margin: 0 }}>{rec.role}</h3>
+                    <span style={{ background: DEMAND_BG[rec.demand], color: DEMAND_COLORS[rec.demand], borderRadius: 100, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>
+                      {rec.demand} Demand
+                    </span>
+                  </div>
+                  <p style={{ color: "#4B5675", fontSize: mob ? 13 : 14, lineHeight: 1.7, margin: "0 0 14px" }}>{rec.reason}</p>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16, maxWidth: 360 }}>
+                    <div style={{ background: "#F8FAFF", borderRadius: 10, padding: "10px 14px" }}>
+                      <div style={{ fontSize: mob ? 16 : 18, fontWeight: 900, color: "#0057FF" }}>{rec.avgSalary}</div>
+                      <div style={{ fontSize: 10, color: "#9CA3B8", marginTop: 2 }}>Average Salary</div>
+                    </div>
+                    <div style={{ background: "#F8FAFF", borderRadius: 10, padding: "10px 14px" }}>
+                      <div style={{ fontSize: mob ? 16 : 18, fontWeight: 900, color: "#00D68F" }}>{rec.sponsors.toLocaleString()}+</div>
+                      <div style={{ fontSize: 10, color: "#9CA3B8", marginTop: 2 }}>Verified Sponsors</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button onClick={() => navigate(`/jobs?q=${encodeURIComponent(rec.role)}`)} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 22px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                      Find {rec.role} Jobs →
+                    </button>
+                    <button onClick={() => navigate("/visa-checker")} style={{ background: "#F8FAFF", border: "1px solid #E8EEFF", color: "#4B5675", borderRadius: 10, padding: "11px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                      Check Eligibility
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: "grid", gridTemplateColumns: mob ? "1fr" : "1fr 1fr", gap: 16 }}>
+          <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 18, padding: "24px" }}>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>📄</div>
+            <div style={{ fontWeight: 800, fontSize: 15, color: "#0A0F1E", marginBottom: 6 }}>Score your CV</div>
+            <div style={{ color: "#4B5675", fontSize: 13, lineHeight: 1.6, marginBottom: 14 }}>See how your CV scores for these roles and get AI improvement tips.</div>
+            <button onClick={() => navigate("/profile")} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: 9, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Score My CV →</button>
+          </div>
+          <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 18, padding: "24px" }}>
+            <div style={{ fontSize: 28, marginBottom: 12 }}>🛂</div>
+            <div style={{ fontWeight: 800, fontSize: 15, color: "#0A0F1E", marginBottom: 6 }}>Check visa eligibility</div>
+            <div style={{ color: "#4B5675", fontSize: 13, lineHeight: 1.6, marginBottom: 14 }}>Confirm your salary meets the threshold for these sponsored roles.</div>
+            <button onClick={() => navigate("/visa-checker")} style={{ background: "linear-gradient(135deg, #00D68F, #00A67E)", color: "#fff", border: "none", borderRadius: 9, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Check Eligibility →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -11,6 +11,7 @@ import EmployerProfilePage from "./pages/EmployerProfilePage"
 import AboutPage from "./pages/AboutPage"
 import ContactPage from "./pages/ContactPage"
 import CareersPage from "./pages/CareersPage"
+import ProfileCheckPage from "./pages/ProfileCheckPage"
 import { PrivacyPage, TermsPage, CookiePage, GDPRPage, MissionPage } from "./pages/LegalPages"
 
 export default function App() {
@@ -21,12 +22,14 @@ export default function App() {
           @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
           html { scroll-behavior: smooth; }
-          body { overflow-x: hidden; -webkit-font-smoothing: antialiased; background: #fff; }
+          body { overflow-x: hidden; -webkit-font-smoothing: antialiased; background: #fff; max-width: 100vw; }
           button, input, select, textarea { font-family: inherit; }
           ::-webkit-scrollbar { width: 5px; }
           ::-webkit-scrollbar-track { background: #F8FAFF; }
           ::-webkit-scrollbar-thumb { background: #0057FF45; border-radius: 3px; }
           input::placeholder { color: #9CA3B8; }
+          * { -webkit-tap-highlight-color: transparent; }
+          @media (max-width: 768px) { html, body { overflow-x: hidden; } }
         `}</style>
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -34,6 +37,7 @@ export default function App() {
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/profile-check" element={<ProfileCheckPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/visa-checker" element={<VisaCheckerPage />} />
           <Route path="/employers" element={<EmployersPage />} />
