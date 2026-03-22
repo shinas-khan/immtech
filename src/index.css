@@ -1,0 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  background: #fff;
+  /* Prevent horizontal scroll on mobile */
+  max-width: 100vw;
+}
+button, input, select, textarea { font-family: inherit; }
+input::placeholder { color: #9CA3B8; }
+img { max-width: 100%; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #F8FAFF; }
+::-webkit-scrollbar-thumb { background: #0057FF45; border-radius: 3px; }
+
+/* Mobile tap highlight */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Mobile viewport fix */
+@media (max-width: 768px) {
+  html, body { overflow-x: hidden; }
+  * { max-width: 100%; }
+}

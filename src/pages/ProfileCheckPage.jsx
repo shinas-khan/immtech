@@ -76,9 +76,8 @@ export default function ProfileCheckPage() {
   if (loading) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8FAFF" }}>
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 40, marginBottom: 12, width: 48, height: 48, borderRadius: "50%", background: "linear-gradient(135deg, #0057FF, #00C2FF)", margin: "0 auto 16px" }}></div>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>&#129302;</div>
         <div style={{ color: "#4B5675", fontSize: 15 }}>Analysing your profile...</div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
     </div>
   )
