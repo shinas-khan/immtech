@@ -114,6 +114,22 @@ async function fetchReed(q, loc, page) {
 
 function JobCard({ job, onSave, saved, navigate, mob }) {
   const [expanded, setExpanded] = useState(false)
+  const [careersUrl, setCareersUrl] = useState(null)
+  const [loadingCareers, setLoadingCareers] = useState(false)
+
+  // Fetch direct careers page for this employer
+  useEffect(() => {
+    if (!job.employer || job.employer === "Unknown") return
+    setLoadingCareers(true)
+    fetch(`/api/employer-careers?employer=${encodeURIComponent(job.employer)}`)
+      .then(r => r.json())
+      .then(data => { if (data.found) setCareersUrl(data.url) })
+      .catch(() => {})
+      .finally(() => setLoadingCareers(false))
+  }, [job.employer])
+
+
+  const [expanded, setExpanded] = useState(false)
   const salary = job.salary_min || job.salary_max
     ? `£${(job.salary_min || 0).toLocaleString()}${job.salary_max ? ` - £${job.salary_max.toLocaleString()}` : "+"}`
     : null
@@ -209,13 +225,18 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
         </>
       )}
 
-      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-        <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", borderRadius: 8, padding: "9px 14px", fontSize: 12, fontWeight: 700, textDecoration: "none", textAlign: "center" }}>
-          Apply Now
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", borderRadius: 8, padding: "9px 14px", fontSize: 12, fontWeight: 700, textDecoration: "none", textAlign: "center", minWidth: 80 }}>
+          Apply via {job.source}
         </a>
+        {careersUrl && (
+          <a href={careersUrl} target="_blank" rel="noopener noreferrer" style={{ background: "#00D68F", color: "#fff", borderRadius: 8, padding: "9px 12px", fontSize: 11, fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
+            Direct Careers Page
+          </a>
+        )}
         {job.sponsorInfo && (
-          <button onClick={() => navigate(`/employer/${encodeURIComponent(job.employer)}`)} style={{ background: "#00D68F10", border: "1px solid #00D68F30", color: "#00D68F", borderRadius: 8, padding: "9px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-            Employer
+          <button onClick={() => navigate(`/employer/${encodeURIComponent(job.employer)}`)} style={{ background: "#F0F5FF", border: "1px solid #0057FF20", color: "#0057FF", borderRadius: 8, padding: "9px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            Profile
           </button>
         )}
       </div>
