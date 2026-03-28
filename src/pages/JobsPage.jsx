@@ -131,7 +131,7 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
 
   const [expanded, setExpanded] = useState(false)
   const salary = job.salary_min || job.salary_max
-    ? `£${(job.salary_min || 0).toLocaleString()}${job.salary_max ? ` - £${job.salary_max.toLocaleString()}` : "+"}`
+    ? `GBP ${(job.salary_min || 0).toLocaleString()}${job.salary_max ? ` - GBP ${job.salary_max.toLocaleString()}` : "+"}`
     : null
   const posted = job.posted
     ? new Date(job.posted).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
@@ -178,7 +178,7 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
             {job.title}
           </h3>
           <div style={{ color: "#4B5675", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {job.employer} · {job.location}
+            {job.employer} - {job.location}
           </div>
         </div>
 
@@ -335,7 +335,7 @@ export default function JobsPage() {
       if (filters.source === "Reed") scored = scored.filter(j => j.source === "Reed")
       if (filters.source === "Adzuna") scored = scored.filter(j => j.source === "Adzuna")
 
-      // Sort — verified first, then by score
+      // Sort - verified first, then by score
       scored.sort((a, b) => {
         if (a.verified && !b.verified) return -1
         if (!a.verified && b.verified) return 1
@@ -392,7 +392,7 @@ export default function JobsPage() {
             Find UK Visa Sponsored Jobs
           </h1>
           <p style={{ color: "#4B5675", fontSize: mob ? 12 : 14, margin: 0 }}>
-            125,284 verified UK Home Office licensed sponsors · Verified results shown first
+            125,284 verified UK Home Office licensed sponsors - Verified results shown first
           </p>
         </div>
 
@@ -408,7 +408,7 @@ export default function JobsPage() {
               onFocus={() => { setShowQ(true); setShowL(false) }}
               onBlur={() => setTimeout(() => setShowQ(false), 200)}
               onKeyDown={e => { if (e.key === "Enter") { doSearch(1, q, loc); setShowQ(false) } }}
-              placeholder="Job title or keyword — or leave empty to see all jobs"
+              placeholder="Job title or keyword - or leave empty to see all jobs"
               style={{ width: "100%", border: "none", outline: "none", background: "transparent", padding: mob ? "14px 80px 14px 70px" : "14px 90px 14px 72px", fontSize: mob ? 14 : 15, color: "#0A0F1E", fontFamily: "inherit" }}
             />
             {q && (
@@ -428,7 +428,7 @@ export default function JobsPage() {
                     onMouseEnter={e => e.currentTarget.style.background = role === "All Jobs" ? "#E8F0FF" : "#F8FAFF"}
                     onMouseLeave={e => e.currentTarget.style.background = role === "All Jobs" ? "#F0F5FF" : "transparent"}
                   >
-                    {role === "All Jobs" ? "★  " : ""}{role}
+                    {role === "All Jobs" ? "*  " : ""}{role}
                   </div>
                 ))}
               </div>
@@ -460,7 +460,7 @@ export default function JobsPage() {
                       onMouseEnter={e => e.currentTarget.style.background = city === "Anywhere in UK" ? "#E8F0FF" : "#F8FAFF"}
                       onMouseLeave={e => e.currentTarget.style.background = city === "Anywhere in UK" ? "#F0F5FF" : "transparent"}
                     >
-                      {city === "Anywhere in UK" ? "★  " : ""}{city}
+                      {city === "Anywhere in UK" ? "*  " : ""}{city}
                     </div>
                   ))}
                 </div>
@@ -537,7 +537,7 @@ export default function JobsPage() {
               </div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "#9CA3B8", whiteSpace: "nowrap" }}>Salary £</span>
+              <span style={{ fontSize: 11, color: "#9CA3B8", whiteSpace: "nowrap" }}>Salary GBP </span>
               <input value={filters.salaryMin} onChange={e => setFilter("salaryMin", e.target.value)} placeholder="Min e.g. 25000" type="number" style={{ flex: 1, border: "1.5px solid #E8EEFF", borderRadius: 8, padding: "8px 10px", fontSize: 12, color: "#0A0F1E", background: "#F8FAFF", fontFamily: "inherit", outline: "none" }} onFocus={e => e.target.style.borderColor = "#0057FF"} onBlur={e => e.target.style.borderColor = "#E8EEFF"} />
               <span style={{ color: "#9CA3B8", fontSize: 12 }}>to</span>
               <input value={filters.salaryMax} onChange={e => setFilter("salaryMax", e.target.value)} placeholder="Max e.g. 80000" type="number" style={{ flex: 1, border: "1.5px solid #E8EEFF", borderRadius: 8, padding: "8px 10px", fontSize: 12, color: "#0A0F1E", background: "#F8FAFF", fontFamily: "inherit", outline: "none" }} onFocus={e => e.target.style.borderColor = "#0057FF"} onBlur={e => e.target.style.borderColor = "#E8EEFF"} />
