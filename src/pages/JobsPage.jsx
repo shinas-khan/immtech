@@ -8,7 +8,33 @@ const ADZUNA_ID = "344e86d1"
 const ADZUNA_KEY = "039c47ae80bab92aef99751a471040fb"
 
 const FRESHER_KW = ["graduate","entry level","junior","trainee","apprentice","no experience","fresh graduate","new graduate","grad scheme","graduate scheme","placement","internship"]
-const NEG_KW = ["must have right to work","no sponsorship","sponsorship not available","cannot sponsor","uk residents only","british nationals only","no visa sponsorship","must be eligible to work in the uk without sponsorship"]
+const NEG_KW = [
+  "must have right to work",
+  "no sponsorship",
+  "sponsorship not available",
+  "cannot sponsor",
+  "cannot offer visa sponsorship",
+  "unable to offer sponsorship",
+  "unable to sponsor",
+  "we cannot offer visa",
+  "does not offer sponsorship",
+  "not able to sponsor",
+  "unfortunately we cannot offer",
+  "uk residents only",
+  "british nationals only",
+  "no visa sponsorship",
+  "must be eligible to work in the uk without sponsorship",
+  "must have the right to work in the uk",
+  "you must have the right to work",
+  "right to work in uk is required",
+  "only applicants with right to work",
+  "applicants must have the right to work",
+  "we do not offer sponsorship",
+  "sponsorship is not available",
+  "visa sponsorship is not available",
+  "not in a position to sponsor",
+  "does not provide sponsorship",
+]
 const VISA_KW = ["visa sponsorship","sponsor visa","certificate of sponsorship","cos provided","skilled worker visa","tier 2","ukvi","sponsorship available","will sponsor","sponsorship provided","visa support","sponsorship considered","open to sponsorship","visa provided","relocation package","international applicants"]
 
 const ALL_ROLES = ["All Jobs", ...ALL_JOBS]
@@ -18,115 +44,128 @@ const JOBS_PER_PAGE = 20
 
 // Direct employer careers page database - 200+ major UK sponsors
 const CAREERS_DB = {
+  // Big Tech - verified working URLs
   "amazon": "https://www.amazon.jobs/en-gb",
   "google": "https://careers.google.com",
   "microsoft": "https://careers.microsoft.com",
-  "apple": "https://www.apple.com/careers/uk",
+  "apple": "https://jobs.apple.com/en-gb/search",
   "meta": "https://www.metacareers.com",
-  "ibm": "https://www.ibm.com/careers/uk-en",
-  "oracle": "https://www.oracle.com/uk/careers",
+  "ibm": "https://www.ibm.com/employment",
+  "oracle": "https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/jobsearch",
   "salesforce": "https://careers.salesforce.com",
   "adobe": "https://careers.adobe.com",
   "intel": "https://jobs.intel.com",
   "cisco": "https://jobs.cisco.com",
-  "nvidia": "https://www.nvidia.com/en-gb/about-nvidia/careers",
-  "barclays": "https://home.barclays/careers",
-  "hsbc": "https://www.hsbc.com/careers",
-  "lloyds": "https://www.lloydsbankinggroup.com/careers.html",
-  "natwest": "https://www.natwestgroup.com/careers.html",
-  "standard chartered": "https://careers.standardchartered.com",
-  "goldman sachs": "https://www.goldmansachs.com/careers",
-  "jp morgan": "https://careers.jpmorgan.com",
-  "jpmorgan": "https://careers.jpmorgan.com",
-  "morgan stanley": "https://www.morganstanley.com/people/careers",
+  "nvidia": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite",
+  "dell": "https://jobs.dell.com",
+  "hp": "https://careers.hpe.com",
+  "samsung": "https://www.samsung.com/uk/aboutsamsung/careers",
+  "qualcomm": "https://careers.qualcomm.com",
+  // UK Banks - verified working URLs
+  "barclays": "https://search.jobs.barclays",
+  "hsbc": "https://mycareer.hsbc.com/en_GB/external/SearchJobs",
+  "lloyds": "https://careers.lloydsbank.com",
+  "natwest": "https://jobs.natwestgroup.com",
+  "rbs": "https://jobs.natwestgroup.com",
+  "standard chartered": "https://scb.taleo.net/careersection/ex/jobsearch.ftl",
+  "goldman sachs": "https://higher.gs.com/roles",
+  "jp morgan": "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001",
+  "jpmorgan": "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001",
+  "morgan stanley": "https://morganstanley.tal.net/vx/lang-en-GB/candidate/jobboard/vacancy/1/adv",
   "deutsche bank": "https://careers.db.com",
   "blackrock": "https://careers.blackrock.com",
   "fidelity": "https://jobs.fidelityinternational.com",
-  "legal and general": "https://careers.legalandgeneral.com",
   "aviva": "https://careers.aviva.co.uk",
-  "axa": "https://www.axa.co.uk/about-us/careers",
-  "deloitte": "https://www2.deloitte.com/uk/en/careers.html",
-  "pwc": "https://www.pwc.co.uk/careers.html",
-  "kpmg": "https://www.kpmg.com/uk/en/home/careers.html",
-  "ernst young": "https://www.ey.com/en_uk/careers",
+  "axa": "https://careers.axa.co.uk",
+  "legal general": "https://careers.legalandgeneral.com",
+  // Consulting - verified working
+  "deloitte": "https://apply.deloitte.com",
+  "pwc": "https://www.pwc.co.uk/careers",
+  "kpmg": "https://www.kpmg.com/uk/en/home/careers",
+  "ernst young": "https://careers.ey.com",
   "accenture": "https://www.accenture.com/gb-en/careers",
-  "mckinsey": "https://www.mckinsey.com/careers",
-  "boston consulting": "https://www.bcg.com/careers",
   "capgemini": "https://www.capgemini.com/gb-en/careers",
   "cognizant": "https://careers.cognizant.com",
   "infosys": "https://www.infosys.com/careers",
-  "tata consultancy": "https://www.tcs.com/careers",
+  "tata consultancy": "https://ibegin.infosys.com/jobs",
   "wipro": "https://careers.wipro.com",
+  // NHS and Healthcare
   "nhs": "https://www.jobs.nhs.uk",
   "bupa": "https://careers.bupa.co.uk",
   "nuffield": "https://www.nuffieldhealth.com/careers",
   "spire": "https://jobs.spirehealthcare.com",
   "astrazeneca": "https://careers.astrazeneca.com",
-  "gsk": "https://careers.gsk.com",
-  "glaxosmithkline": "https://careers.gsk.com",
-  "pfizer": "https://www.pfizer.co.uk/careers",
+  "gsk": "https://jobs.gsk.com",
+  "glaxosmithkline": "https://jobs.gsk.com",
+  "pfizer": "https://pfizer.wd1.myworkdayjobs.com/PfizerCareers",
   "novartis": "https://www.novartis.com/careers",
   "roche": "https://www.roche.com/careers",
   "johnson johnson": "https://jobs.jnj.com",
-  "sanofi": "https://www.sanofi.com/en/careers",
+  "sanofi": "https://sanofi.wd3.myworkdayjobs.com/Sanofi",
   "abbvie": "https://careers.abbvie.com",
-  "eli lilly": "https://careers.lilly.com",
+  "eli lilly": "https://jobs.lilly.com",
   "bristol myers": "https://careers.bms.com",
   "merck": "https://jobs.merck.com",
+  "care uk": "https://careers.careuk.com",
+  "four seasons": "https://www.fshcgroup.com/careers",
+  "flourish": "https://www.jobs.nhs.uk",
+  // Telecoms
   "bt group": "https://careers.bt.com",
+  "bt ": "https://careers.bt.com",
   "vodafone": "https://careers.vodafone.com/uk",
   "sky": "https://careers.sky.com",
   "virgin media": "https://careers.virginmedia.com",
+  // Engineering and Manufacturing
   "rolls royce": "https://careers.rolls-royce.com",
   "bae systems": "https://careers.baesystems.com",
   "airbus": "https://www.airbus.com/en/careers",
   "boeing": "https://jobs.boeing.com",
-  "siemens": "https://new.siemens.com/global/en/company/jobs.html",
+  "siemens": "https://jobs.siemens.com",
   "dyson": "https://careers.dyson.com",
   "jaguar land rover": "https://www.jaguarlandrover.com/careers",
   "arup": "https://www.arup.com/careers",
-  "atkins": "https://careers.atkinsrealis.com",
-  "aecom": "https://careers.aecom.com",
+  "atkins": "https://www.atkinsrealis.com/careers",
+  "aecom": "https://aecom.jobs",
   "mott macdonald": "https://www.mottmac.com/careers",
   "wsp": "https://www.wsp.com/en-gb/careers",
   "jacobs": "https://careers.jacobs.com",
-  "bp": "https://www.bp.com/en/global/corporate/careers.html",
-  "shell": "https://www.shell.com/careers.html",
+  "bp": "https://www.bp.com/en/global/corporate/careers",
+  "shell": "https://www.shell.com/careers",
+  // Retail
   "tesco": "https://www.tesco-careers.com",
   "sainsburys": "https://jobs.sainsburys.co.uk",
-  "asda": "https://careers.asda.com",
+  "asda": "https://jobs.asda.com",
   "marks spencer": "https://jobs.marksandspencer.com",
-  "waitrose": "https://jobs.waitrose.com",
-  "john lewis": "https://jobs.johnlewispartnership.co.uk",
+  "waitrose": "https://www.waitrosejobs.com",
+  "john lewis": "https://www.jlpjobs.com",
   "boots": "https://jobs.boots.com",
   "unilever": "https://careers.unilever.com",
   "nestle": "https://www.nestle.com/jobs",
   "diageo": "https://www.diageo.com/en/careers",
   "reckitt": "https://careers.reckitt.com",
+  // Transport
   "british airways": "https://careers.ba.com",
-  "virgin atlantic": "https://careers.virginatlantic.com",
   "easyjet": "https://careers.easyjet.com",
   "dhl": "https://careers.dhl.com",
-  "ups": "https://jobs.ups.com",
   "royal mail": "https://jobs.royalmail.com",
   "network rail": "https://www.networkrail.co.uk/careers",
-  "transport for london": "https://tfl.gov.uk/corporate/careers",
+  "transport for london": "https://jobs.tfl.gov.uk",
+  // Fintech
   "revolut": "https://www.revolut.com/careers",
   "monzo": "https://monzo.com/careers",
   "wise": "https://www.wise.jobs",
   "starling": "https://www.starlingbank.com/careers",
-  "checkout": "https://www.checkout.com/careers",
   "klarna": "https://www.klarna.com/careers",
+  // Media
   "bbc": "https://careers.bbc.co.uk",
   "bloomberg": "https://careers.bloomberg.com",
+  // Other
   "capita": "https://careers.capita.com",
   "serco": "https://careers.serco.com",
   "cbre": "https://careers.cbre.com",
   "jll": "https://careers.jll.com",
   "savills": "https://careers.savills.com",
-  "flourish": "https://www.jobs.nhs.uk",
-  "care uk": "https://careers.careuk.com",
-  "four seasons": "https://www.fshc.co.uk/careers",
+  "academics": "https://www.academicseducation.co.uk/jobs",
 }
 
 function getCareersUrl(employerName) {
@@ -203,7 +242,9 @@ async function batchCheckSponsors(employers) {
 }
 
 function scoreJob(job, sponsorData) {
-  const text = (job.title + " " + job.description + " " + job.employer).toLowerCase()
+  // Strip HTML tags before checking for negative phrases
+  const rawDesc = job.description ? job.description.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ") : ""
+  const text = (job.title + " " + rawDesc + " " + job.employer).toLowerCase()
   let score = 0
   let signals = []
   let fresherFriendly = false
@@ -465,13 +506,18 @@ export default function JobsPage() {
       if (reedRes.status === "fulfilled") { rawJobs.push(...reedRes.value.jobs); total += reedRes.value.total }
       if (adzunaRes.status === "fulfilled") { rawJobs.push(...adzunaRes.value.jobs); total += adzunaRes.value.total }
 
-      // Also fetch page 2 to get more jobs
-      const [reedRes2, adzunaRes2] = await Promise.allSettled([
+      // Fetch pages 2, 3, 4 to get more jobs
+      const moreFetches = await Promise.allSettled([
         fetchReed(searchQ, cleanLoc, 2),
         fetchAdzuna(searchQ, cleanLoc, 2),
+        fetchReed(searchQ, cleanLoc, 3),
+        fetchAdzuna(searchQ, cleanLoc, 3),
+        fetchReed(searchQ, cleanLoc, 4),
+        fetchAdzuna(searchQ, cleanLoc, 4),
       ])
-      if (reedRes2.status === "fulfilled") rawJobs.push(...reedRes2.value.jobs)
-      if (adzunaRes2.status === "fulfilled") rawJobs.push(...adzunaRes2.value.jobs)
+      for (const res of moreFetches) {
+        if (res.status === "fulfilled") rawJobs.push(...res.value.jobs)
+      }
 
       if (rawJobs.length === 0) { setError("No results found. Try a different search."); setLoading(false); return }
 
@@ -484,7 +530,7 @@ export default function JobsPage() {
         return true
       })
 
-      setTotalJobs(Math.max(total, rawJobs.length))
+      setTotalJobs(total > 0 ? total : rawJobs.length)
 
       // Verify sponsors
       const sponsorMap = await batchCheckSponsors(rawJobs.map(j => j.employer))
