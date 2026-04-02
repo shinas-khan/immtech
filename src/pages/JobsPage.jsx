@@ -113,7 +113,7 @@ async function fetchReed(q, loc, page) {
 }
 
 function JobCard({ job, onSave, saved, navigate, mob }) {
-  const [expanded, setExpanded] = useState(false)
+
   const [careersUrl, setCareersUrl] = useState(null)
   const [loadingCareers, setLoadingCareers] = useState(false)
 
