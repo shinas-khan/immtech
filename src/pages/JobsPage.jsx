@@ -80,27 +80,12 @@ function scoreJob(job, sponsorData) {
   }
 }
 
-async function fetchAdzuna(q, loc, page) {
-  const what = q ? `${q} visa sponsorship` : "visa sponsorship uk jobs"
-  const where = loc && loc !== "Anywhere in UK" ? loc : "UK"
-  const params = new URLSearchParams({ app_id: ADZUNA_ID, app_key: ADZUNA_KEY, what, where, results_per_page: 20 })
-  const r = await fetch(`https://api.adzuna.com/v1/api/jobs/gb/search/${page}?${params}`)
-  if (!r.ok) throw new Error(`Adzuna ${r.status}`)
-  const data = await r.json()
-  return (data.results || []).map(j => ({
-    id: `adzuna_${j.id}`, source: "Adzuna",
-    title: j.title || "", employer: j.company?.display_name || "Unknown",
-    location: j.location?.display_name || "UK",
-    salary_min: j.salary_min, salary_max: j.salary_max,
-    description: j.description || "", url: j.redirect_url || "#",
-    posted: j.created, full_time: j.contract_time === "full_time",
-  }))
-}
+
 
 async function fetchReed(q, loc, page) {
   const keywords = q ? `${q} visa sponsorship` : "visa sponsorship"
   const locationName = loc && loc !== "Anywhere in UK" ? loc : "United Kingdom"
-  const params = new URLSearchParams({ keywords, locationName, resultsToTake: 20, resultsToSkip: (page - 1) * 20 })
+  const params = new URLSearchParams({ keywords, locationName, resultsToTake: 50, resultsToSkip: (page - 1) * 50 })
   const r = await fetch(`https://uk-visa-jobs-six.vercel.app/api/reed?${params}`)
   if (!r.ok) throw new Error(`Reed ${r.status}`)
   const data = await r.json()
@@ -115,22 +100,16 @@ async function fetchReed(q, loc, page) {
 }
 
 function JobCard({ job, onSave, saved, navigate, mob }) {
+  const [expanded, setExpanded] = useState(false)
   const [careersUrl, setCareersUrl] = useState(null)
-  const [loadingCareers, setLoadingCareers] = useState(false)
 
-  // Fetch direct careers page for this employer
   useEffect(() => {
     if (!job.employer || job.employer === "Unknown") return
-    setLoadingCareers(true)
-    fetch(`/api/employer-careers?employer=${encodeURIComponent(job.employer)}`)
+    fetch("/api/employer-careers?employer=" + encodeURIComponent(job.employer))
       .then(r => r.json())
       .then(data => { if (data.found) setCareersUrl(data.url) })
       .catch(() => {})
-      .finally(() => setLoadingCareers(false))
   }, [job.employer])
-
-
-  const [expanded, setExpanded] = useState(false)
   const salary = job.salary_min || job.salary_max
     ? `GBP ${(job.salary_min || 0).toLocaleString()}${job.salary_max ? ` - GBP ${job.salary_max.toLocaleString()}` : "+"}`
     : null
@@ -295,12 +274,24 @@ export default function JobsPage() {
     try {
       const cleanLoc = searchLoc && searchLoc !== "Anywhere in UK" ? searchLoc : ""
       let allJobs = []
-      const [reedRes, adzunaRes] = await Promise.allSettled([
-        fetchReed(searchQ, cleanLoc, p),
-        fetchAdzuna(searchQ, cleanLoc, p),
-      ])
-      if (reedRes.status === "fulfilled") allJobs.push(...reedRes.value)
-      if (adzunaRes.status === "fulfilled") allJobs.push(...adzunaRes.value)
+
+      // Use multiple search terms to maximise results from free APIs
+      // Each term targets different ways employers word sponsorship
+      const searchTerms = searchQ
+        ? [searchQ + " visa sponsorship", searchQ + " certificate of sponsorship", searchQ + " skilled worker visa"]
+        : ["visa sponsorship uk", "certificate of sponsorship uk", "skilled worker visa jobs", "tier 2 sponsorship jobs"]
+
+      const fetches = await Promise.allSettled(
+        searchTerms.flatMap(term => [
+          fetchReedRaw(term, cleanLoc, 1),
+          fetchReedRaw(term, cleanLoc, 2),
+          fetchAdzunaRaw(term, cleanLoc, 1),
+          fetchAdzunaRaw(term, cleanLoc, 2),
+        ])
+      )
+      for (const res of fetches) {
+        if (res.status === "fulfilled") allJobs.push(...res.value)
+      }
 
       if (allJobs.length === 0 && p === 1) {
         setError("No results found. Try a different search.")
