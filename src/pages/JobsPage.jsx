@@ -19,7 +19,35 @@ const NEG_KW = [
   "you must have the right to work", "applicants must have the right to work",
   "only applicants with the right to work", "must already have the right to work",
   "must be eligible to work in the uk without", "right to work without sponsorship",
-  "sponsorship cannot be offered", "we are unable to offer visa"
+  "sponsorship cannot be offered", "we are unable to offer visa",
+  "not eligible for uk visa sponsorship",
+  "not eligible for visa sponsorship",
+  "not open to sponsorship",
+  "will not be open to sponsorship",
+  "unable to accept applicants with skilled worker",
+  "not open to skilled worker visa",
+  "salary does not meet the home office",
+  "does not meet the home office requirements",
+  "this post will not be open to sponsorship",
+  "we cannot accept applications from candidates who require",
+  "only accept applications from candidates who are located in",
+  "eligible to work within the uk",
+  "cannot accept applicants who require sponsorship",
+  "sponsorship under the ukvi",
+  "ukvi scheme",
+  "not sponsored by us",
+  "sponsorship is not provided",
+  "we do not provide sponsorship",
+  "you must not require sponsorship",
+  "this role does not offer sponsorship",
+  "visa sponsorship is unfortunately",
+  "this position does not offer",
+  "not able to offer sponsorship",
+  "regret we are unable to offer",
+  "this vacancy does not offer",
+  "no work permit",
+  "work permit will not be sponsored",
+  "cannot provide certificate of sponsorship"
 ]
 
 // Strong positive - job IS offering sponsorship
@@ -39,140 +67,18 @@ const VISA_WEAK = [
   "tier 2", "ukvi"
 ]
 
-const FRESHER_KW = ["graduate scheme", "grad scheme", "graduate programme", "entry level graduate", "trainee programme", "apprenticeship"]
+const FRESHER_KW = [
+  "graduate", "entry level", "junior", "trainee", "apprentice",
+  "grad scheme", "graduate scheme", "graduate programme",
+  "no experience required", "fresh graduate", "new graduate"
+]
 
 const ALL_ROLES = ["All Jobs", ...ALL_JOBS]
 const ALL_LOCS = ["Anywhere in UK", ...ALL_LOCATIONS]
 const QUICK_ROLES = ["All Jobs","Software Engineer","Registered Nurse","Data Analyst","Cyber Security Analyst","Civil Engineer","Pharmacist","Data Scientist","Accountant","Physiotherapist","Social Worker","DevOps Engineer"]
 
 
-const CAREERS_DB = {
-  "amazon": "https://www.amazon.jobs/en-gb",
-  "google": "https://careers.google.com",
-  "microsoft": "https://careers.microsoft.com",
-  "apple": "https://jobs.apple.com/en-gb/search",
-  "meta": "https://www.metacareers.com",
-  "ibm": "https://www.ibm.com/employment",
-  "salesforce": "https://careers.salesforce.com",
-  "adobe": "https://careers.adobe.com",
-  "intel": "https://jobs.intel.com",
-  "cisco": "https://jobs.cisco.com",
-  "nvidia": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite",
-  "dell": "https://jobs.dell.com",
-  "samsung": "https://www.samsung.com/uk/aboutsamsung/careers",
-  "barclays": "https://search.jobs.barclays",
-  "hsbc": "https://mycareer.hsbc.com/en_GB/external/SearchJobs",
-  "lloyds bank": "https://careers.lloydsbank.com",
-  "lloyds banking": "https://careers.lloydsbank.com",
-  "natwest bank": "https://jobs.natwestgroup.com",
-  "natwest group": "https://jobs.natwestgroup.com",
-  "natwest markets": "https://jobs.natwestgroup.com",
-  "standard chartered": "https://careers.standardchartered.com",
-  "goldman sachs": "https://higher.gs.com/roles",
-  "jpmorgan": "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001",
-  "jp morgan": "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001",
-  "morgan stanley": "https://morganstanley.tal.net/vx/lang-en-GB/candidate/jobboard/vacancy/1/adv",
-  "deutsche bank": "https://careers.db.com",
-  "blackrock": "https://careers.blackrock.com",
-  "fidelity international": "https://jobs.fidelityinternational.com",
-  "aviva": "https://careers.aviva.co.uk",
-  "deloitte": "https://apply.deloitte.com",
-  "pwc": "https://www.pwc.co.uk/careers",
-  "kpmg": "https://www.kpmg.com/uk/en/home/careers",
-  "accenture": "https://www.accenture.com/gb-en/careers",
-  "capgemini": "https://www.capgemini.com/gb-en/careers",
-  "cognizant": "https://careers.cognizant.com",
-  "infosys": "https://www.infosys.com/careers",
-  "tata consultancy": "https://www.tcs.com/careers",
-  "wipro": "https://careers.wipro.com",
-  "bupa": "https://careers.bupa.co.uk",
-  "nuffield health": "https://www.nuffieldhealth.com/careers",
-  "spire healthcare": "https://jobs.spirehealthcare.com",
-  "astrazeneca": "https://careers.astrazeneca.com",
-  "glaxosmithkline": "https://jobs.gsk.com",
-  "pfizer": "https://pfizer.wd1.myworkdayjobs.com/PfizerCareers",
-  "novartis": "https://www.novartis.com/careers",
-  "roche": "https://www.roche.com/careers",
-  "sanofi": "https://sanofi.wd3.myworkdayjobs.com/Sanofi",
-  "abbvie": "https://careers.abbvie.com",
-  "eli lilly": "https://jobs.lilly.com",
-  "care uk": "https://careers.careuk.com",
-  "university of the west of scotland": "https://ce0974li.webitrent.com/ce0974li_webrecruitment/wrd/run/etrec179gf.open?wvid=3866692FHL",
-  "university of oxford": "https://jobs.ox.ac.uk",
-  "university of cambridge": "https://www.jobs.cam.ac.uk",
-  "university of edinburgh": "https://www.vacancies.ed.ac.uk",
-  "university of manchester": "https://www.jobs.manchester.ac.uk",
-  "university of birmingham": "https://www.birmingham.ac.uk/jobs",
-  "university of bristol": "https://www.bristol.ac.uk/jobs",
-  "university of leeds": "https://jobs.leeds.ac.uk",
-  "university of sheffield": "https://www.sheffield.ac.uk/jobs",
-  "university of glasgow": "https://www.gla.ac.uk/explore/jobs",
-  "university college london": "https://www.ucl.ac.uk/human-resources/working-ucl/vacancies",
-  "imperial college": "https://www.imperial.ac.uk/jobs",
-  "london school of economics": "https://jobs.lse.ac.uk",
-  "bt group": "https://careers.bt.com",
-  "vodafone": "https://careers.vodafone.com/uk",
-  "sky": "https://careers.sky.com",
-  "virgin media": "https://careers.virginmedia.com",
-  "rolls royce": "https://careers.rolls-royce.com",
-  "bae systems": "https://careers.baesystems.com",
-  "airbus": "https://www.airbus.com/en/careers",
-  "boeing": "https://jobs.boeing.com",
-  "siemens": "https://jobs.siemens.com",
-  "dyson": "https://careers.dyson.com",
-  "jaguar land rover": "https://www.jaguarlandrover.com/careers",
-  "arup": "https://www.arup.com/careers",
-  "aecom": "https://aecom.jobs",
-  "mott macdonald": "https://www.mottmac.com/careers",
-  "wsp": "https://www.wsp.com/en-gb/careers",
-  "jacobs": "https://careers.jacobs.com",
-  "bp": "https://www.bp.com/en/global/corporate/careers",
-  "shell": "https://www.shell.com/careers",
-  "tesco": "https://www.tesco-careers.com",
-  "sainsburys": "https://jobs.sainsburys.co.uk",
-  "asda": "https://jobs.asda.com",
-  "waitrose": "https://www.waitrosejobs.com",
-  "john lewis": "https://www.jlpjobs.com",
-  "boots": "https://jobs.boots.com",
-  "unilever": "https://careers.unilever.com",
-  "nestle": "https://www.nestle.com/jobs",
-  "diageo": "https://www.diageo.com/en/careers",
-  "reckitt": "https://careers.reckitt.com",
-  "british airways": "https://careers.ba.com",
-  "easyjet": "https://careers.easyjet.com",
-  "dhl": "https://careers.dhl.com",
-  "royal mail": "https://jobs.royalmail.com",
-  "network rail": "https://www.networkrail.co.uk/careers",
-  "transport for london": "https://jobs.tfl.gov.uk",
-  "revolut": "https://www.revolut.com/careers",
-  "monzo": "https://monzo.com/careers",
-  "wise": "https://www.wise.jobs",
-  "starling bank": "https://www.starlingbank.com/careers",
-  "klarna": "https://www.klarna.com/careers",
-  "bbc": "https://careers.bbc.co.uk",
-  "bloomberg": "https://careers.bloomberg.com",
-  "capita": "https://careers.capita.com",
-  "serco": "https://careers.serco.com",
-  "cbre": "https://careers.cbre.com",
-  "jll": "https://careers.jll.com",
-  "savills": "https://careers.savills.com",
-}
 
-function getCareersUrl(employer) {
-  if (!employer || employer === "Unknown") return null
-  const norm = employer.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/ +/g, " ").trim()
-  if (CAREERS_DB[norm]) return CAREERS_DB[norm]
-  for (const [key, url] of Object.entries(CAREERS_DB)) {
-    if (key.length < 5) continue
-    if (norm === key) return url
-    if (norm.startsWith(key + " ")) return url
-  }
-  const low = employer.toLowerCase()
-  if (low.startsWith("nhs ") || low.includes(" nhs trust") || low.includes("nhs foundation trust")) {
-    return "https://www.jobs.nhs.uk"
-  }
-  return null
-}
 
 function useW() {
   const [w, setW] = useState(window.innerWidth)
@@ -259,11 +165,13 @@ function scoreJob(job, sponsor) {
   // Salary disclosed
   if (job.salary_min && job.salary_min > 1000) { score += 5; signals.push({ type: "salary", label: "Salary shown" }) }
 
-  // MINIMUM THRESHOLD: Only show jobs that have at least ONE positive signal
-  // A job must be either gov verified OR have explicit visa language
-  // This removes the "5-20%" junk jobs
-  const minRequired = sponsor ? 40 : hasStrongVisa ? 30 : 8
-  if (score < minRequired) return { score: -1, signals: [], fresher: false, verified: false }
+  // MINIMUM THRESHOLD:
+  // Gov verified employer = always show (they CAN sponsor even if description is vague)
+  // Strong visa language = always show
+  // Weak signal only = remove (these are the inaccurate low-score jobs)
+  if (!sponsor && !hasStrongVisa) {
+    return { score: -1, signals: [], fresher: false, verified: false }
+  }
 
   return {
     score: Math.min(100, score),
@@ -327,7 +235,7 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
           <div style={{ display: "flex", gap: 5, marginBottom: 6, flexWrap: "wrap" }}>
             <span style={{ background: job.source === "Reed" ? "#e8534215" : "#7c4dff15", color: job.source === "Reed" ? "#e85342" : "#7c4dff", borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>{job.source}</span>
             {job.fresher && <span style={{ background: "#00D68F15", color: "#00D68F", borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>Fresher Friendly</span>}
-            {getCareersUrl(job.employer) && <span style={{ background: "#0057FF12", color: "#0057FF", borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>Direct Apply</span>}
+
           </div>
           <h3 style={{ fontSize: mob ? 14 : 15, fontWeight: 800, color: "#0A0F1E", margin: "0 0 3px", lineHeight: 1.3 }}>{job.title}</h3>
           <div style={{ color: "#4B5675", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{job.employer} - {job.location}</div>
@@ -356,24 +264,12 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
           {expanded && <p style={{ margin: "8px 0 0", fontSize: 12, color: "#4B5675", lineHeight: 1.7, borderTop: "1px solid #E8EEFF", paddingTop: 8, maxHeight: 140, overflow: "auto" }}>{job.description.replace(/<[^>]*>/g, "").slice(0, 500)}</p>}
         </>
       )}
-      {(() => {
-        const cu = getCareersUrl(job.employer)
-        return (
-          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            {cu ? (
-              <a href={cu} target="_blank" rel="noopener noreferrer" style={{ flex: 1, background: "linear-gradient(135deg,#00D68F,#00A67E)", color: "#fff", borderRadius: 8, padding: "9px 14px", fontSize: 12, fontWeight: 700, textDecoration: "none", textAlign: "center" }}>
-                Apply on Careers Page
-              </a>
-            ) : (
-              <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, background: "linear-gradient(135deg,#0057FF,#00C2FF)", color: "#fff", borderRadius: 8, padding: "9px 14px", fontSize: 12, fontWeight: 700, textDecoration: "none", textAlign: "center" }}>
-                Apply via {job.source}
-              </a>
-            )}
-            {cu && <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ background: "#F0F5FF", border: "1px solid #0057FF20", color: "#0057FF", borderRadius: 8, padding: "9px 12px", fontSize: 11, fontWeight: 700, textDecoration: "none" }}>via {job.source}</a>}
-            {job.sponsorInfo && <button onClick={() => navigate("/employer/" + encodeURIComponent(job.employer))} style={{ background: "#F8FAFF", border: "1px solid #E8EEFF", color: "#4B5675", borderRadius: 8, padding: "9px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Profile</button>}
-          </div>
-        )
-      })()}
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, background: "linear-gradient(135deg,#0057FF,#00C2FF)", color: "#fff", borderRadius: 8, padding: "9px 14px", fontSize: 12, fontWeight: 700, textDecoration: "none", textAlign: "center" }}>
+          Apply Now
+        </a>
+        {job.sponsorInfo && <button onClick={() => navigate("/employer/" + encodeURIComponent(job.employer))} style={{ background: "#F8FAFF", border: "1px solid #E8EEFF", color: "#4B5675", borderRadius: 8, padding: "9px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Profile</button>}
+      </div>
     </div>
   )
 }
