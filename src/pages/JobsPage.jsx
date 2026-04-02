@@ -271,7 +271,7 @@ export default function JobsPage() {
   }
 
   const doSearch = useCallback(async (p, searchQ, searchLoc) => {
-    setLoading(true); setError(""); setPage(p)
+    setLoading(true); setError(""); setCurrentPage(1)
     try {
       const cleanLoc = searchLoc && searchLoc !== "Anywhere in UK" ? searchLoc : ""
       let allJobs = []
