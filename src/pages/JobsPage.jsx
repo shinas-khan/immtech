@@ -8,9 +8,38 @@ const ADZUNA_ID = "344e86d1"
 const ADZUNA_KEY = "039c47ae80bab92aef99751a471040fb"
 const JOBS_PER_PAGE = 20
 
-const NEG_KW = ["no sponsorship","cannot sponsor","cannot offer visa","no visa sponsorship","uk residents only","british nationals only","must have right to work","sponsorship not available","unable to offer sponsorship","we do not offer sponsorship"]
-const VISA_KW = ["visa sponsorship","certificate of sponsorship","skilled worker visa","sponsorship available","will sponsor","sponsorship provided","tier 2","ukvi","open to sponsorship"]
-const FRESHER_KW = ["graduate","entry level","junior","trainee","apprentice","grad scheme"]
+// Hard negative - job DEFINITELY does not sponsor - remove completely
+const NEG_KW = [
+  "no sponsorship", "cannot sponsor", "cannot offer visa", "no visa sponsorship",
+  "uk residents only", "british nationals only", "must have right to work",
+  "sponsorship not available", "unable to offer sponsorship", "we do not offer sponsorship",
+  "unable to sponsor", "does not offer sponsorship", "not able to sponsor",
+  "unfortunately we cannot", "visa sponsorship is not", "not in a position to sponsor",
+  "does not provide sponsorship", "own right to work", "right to work in the uk is required",
+  "you must have the right to work", "applicants must have the right to work",
+  "only applicants with the right to work", "must already have the right to work",
+  "must be eligible to work in the uk without", "right to work without sponsorship",
+  "sponsorship cannot be offered", "we are unable to offer visa"
+]
+
+// Strong positive - job IS offering sponsorship
+const VISA_POS = [
+  "visa sponsorship provided", "visa sponsorship available", "visa sponsorship offered",
+  "will provide visa sponsorship", "certificate of sponsorship", "cos will be provided",
+  "skilled worker visa sponsorship", "we will sponsor", "sponsorship is available",
+  "open to sponsorship", "visa support provided", "sponsorship provided",
+  "tier 2 sponsorship", "ukvi sponsorship", "sponsorship for the right candidate",
+  "visa sponsorship for", "we can sponsor", "sponsorship considered"
+]
+
+// Weak positive - mentions sponsorship but not confirmed
+const VISA_WEAK = [
+  "visa sponsorship", "skilled worker visa", "right to work sponsorship",
+  "sponsorship may be", "sponsorship possible", "sponsorship available for",
+  "tier 2", "ukvi"
+]
+
+const FRESHER_KW = ["graduate scheme", "grad scheme", "graduate programme", "entry level graduate", "trainee programme", "apprenticeship"]
 
 const ALL_ROLES = ["All Jobs", ...ALL_JOBS]
 const ALL_LOCS = ["Anywhere in UK", ...ALL_LOCATIONS]
@@ -68,7 +97,7 @@ const CAREERS_DB = {
   "abbvie": "https://careers.abbvie.com",
   "eli lilly": "https://jobs.lilly.com",
   "care uk": "https://careers.careuk.com",
-  "university of the west of scotland": "https://www.uws.ac.uk/about-uws/vacancies",
+  "university of the west of scotland": "https://ce0974li.webitrent.com/ce0974li_webrecruitment/wrd/run/etrec179gf.open?wvid=3866692FHL",
   "university of oxford": "https://jobs.ox.ac.uk",
   "university of cambridge": "https://www.jobs.cam.ac.uk",
   "university of edinburgh": "https://www.vacancies.ed.ac.uk",
@@ -180,27 +209,72 @@ async function batchCheck(employers) {
 }
 
 function scoreJob(job, sponsor) {
-  const text = (job.title + " " + job.description + " " + job.employer).toLowerCase()
-  for (const neg of NEG_KW) { if (text.includes(neg)) return { score: -1, signals: [], fresher: false, verified: false } }
+  // Strip HTML from description for accurate text matching
+  const rawDesc = job.description
+    ? job.description.replace(/<[^>]*>/g, " ").replace(/ +/g, " ")
+    : ""
+  const text = (job.title + " " + rawDesc + " " + job.employer).toLowerCase()
+
+  // HARD FILTER: Any negative phrase = remove job completely
+  for (const neg of NEG_KW) {
+    if (text.includes(neg)) return { score: -1, signals: [], fresher: false, verified: false }
+  }
+
   let score = 0
   const signals = []
   let fresher = false
+  let hasStrongVisa = false
+
+  // GOV VERIFIED SPONSOR - most reliable signal
   if (sponsor) {
-    score += 55
+    score += 40
     signals.push({ type: "verified", label: "Gov Verified" })
     if (sponsor.rating === "A") { score += 10; signals.push({ type: "rating", label: "A-Rated" }) }
   }
-  let vf = 0
-  for (const kw of VISA_KW) {
-    if (text.includes(kw) && vf < 2) { score += 12; signals.push({ type: "visa", label: kw }); vf++ }
+
+  // STRONG VISA POSITIVE - explicit sponsorship offer
+  for (const kw of VISA_POS) {
+    if (text.includes(kw)) {
+      score += 30
+      signals.push({ type: "visa", label: "Sponsorship Confirmed" })
+      hasStrongVisa = true
+      break
+    }
   }
+
+  // WEAK VISA SIGNAL - only if no strong signal found
+  if (!hasStrongVisa) {
+    for (const kw of VISA_WEAK) {
+      if (text.includes(kw)) {
+        score += 8
+        signals.push({ type: "visa", label: kw })
+        break
+      }
+    }
+  }
+
+  // Fresher detection
   for (const kw of FRESHER_KW) { if (text.includes(kw)) { fresher = true; break } }
-  if (job.salary_min || job.salary_max) { score += 5; signals.push({ type: "salary", label: "Salary shown" }) }
-  return { score: Math.min(100, score), signals: signals.slice(0, 4), fresher, verified: !!sponsor }
+
+  // Salary disclosed
+  if (job.salary_min && job.salary_min > 1000) { score += 5; signals.push({ type: "salary", label: "Salary shown" }) }
+
+  // MINIMUM THRESHOLD: Only show jobs that have at least ONE positive signal
+  // A job must be either gov verified OR have explicit visa language
+  // This removes the "5-20%" junk jobs
+  const minRequired = sponsor ? 40 : hasStrongVisa ? 30 : 8
+  if (score < minRequired) return { score: -1, signals: [], fresher: false, verified: false }
+
+  return {
+    score: Math.min(100, score),
+    signals: [...new Map(signals.map(s => [s.label, s])).values()].slice(0, 4),
+    fresher,
+    verified: !!sponsor
+  }
 }
 
 async function fetchReed(q, loc, page) {
-  const kw = q ? q + " visa sponsorship" : "visa sponsorship"
+  const kw = q ? q + " sponsorship" : "visa sponsorship uk"
   const loc2 = loc || "United Kingdom"
   const params = new URLSearchParams({ keywords: kw, locationName: loc2, resultsToTake: 40, resultsToSkip: (page - 1) * 40 })
   const r = await fetch("https://uk-visa-jobs-six.vercel.app/api/reed?" + params)
@@ -217,7 +291,7 @@ async function fetchReed(q, loc, page) {
 }
 
 async function fetchAdzuna(q, loc, page) {
-  const what = q ? q + " visa sponsorship" : "visa sponsorship uk"
+  const what = q ? q + " sponsorship" : "visa sponsorship uk"
   const where = loc || "UK"
   const params = new URLSearchParams({ app_id: ADZUNA_ID, app_key: ADZUNA_KEY, what, where, results_per_page: 40 })
   const r = await fetch("https://api.adzuna.com/v1/api/jobs/gb/search/" + page + "?" + params)
@@ -241,7 +315,7 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
     : null
   const posted = (() => { if (!job.posted) return ""; const d = new Date(job.posted); return isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short" }) })()
   const sc = job.verified ? "#00D68F" : job.score >= 60 ? "#0057FF" : job.score >= 30 ? "#FF6B35" : "#9CA3B8"
-  const sl = job.verified ? "Verified" : job.score >= 60 ? "Very Likely" : job.score >= 30 ? "Likely" : "Possible"
+  const sl = job.verified && job.score >= 70 ? "Verified" : job.score >= 70 ? "Confirmed" : job.score >= 50 ? "Likely" : "Possible"
   return (
     <div style={{ background: "#fff", border: "1.5px solid " + (job.verified ? "#00D68F35" : "#E8EEFF"), borderRadius: 16, padding: mob ? "14px" : "20px 24px", position: "relative", transition: "all 0.2s" }}
       onMouseEnter={e => { if (!mob) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,57,255,0.07)" } }}
