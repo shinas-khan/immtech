@@ -47,7 +47,10 @@ const NEG_KW = [
   "this vacancy does not offer",
   "no work permit",
   "work permit will not be sponsored",
-  "cannot provide certificate of sponsorship"
+  "cannot provide certificate of sponsorship",
+  "self sponsored", "self-sponsored", "sponsor yourself",
+  "acquire own business", "own your own business",
+  "business opportunity", "franchise opportunity"
 ]
 
 // Strong positive - job IS offering sponsorship
@@ -79,6 +82,145 @@ const QUICK_ROLES = ["All Jobs","Software Engineer","Registered Nurse","Data Ana
 
 
 
+
+
+// UK Home Office 2024 eligible SOC codes for Skilled Worker visa
+// Source: https://www.gov.uk/government/publications/skilled-worker-visa-eligible-occupations
+// Format: "job keyword" -> { soc, minSalary, eligible, route }
+const SOC_ELIGIBILITY = {
+  // ============================================================
+  // UK HOME OFFICE THRESHOLDS - Updated 22 July 2025
+  // General Skilled Worker: GBP 41,700 (or going rate, whichever higher)
+  // New entrant / ISL roles: GBP 33,400
+  // Health & Care (NHS AgfC): GBP 25,000
+  // Must be RQF Level 6 (degree level) from 22 July 2025
+  // ============================================================
+
+  // TECHNOLOGY - all degree level, eligible
+  "software engineer": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "software developer": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "data scientist": { soc: "2425", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "data analyst": { soc: "2425", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "data engineer": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "cyber security": { soc: "2139", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "information security": { soc: "2139", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "devops": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "cloud engineer": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "cloud architect": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "machine learning": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "ai engineer": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "network engineer": { soc: "2133", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "product manager": { soc: "2424", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "it project manager": { soc: "2424", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "project manager": { soc: "2424", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "systems analyst": { soc: "2137", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "business analyst": { soc: "2424", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "solutions architect": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "penetration tester": { soc: "2139", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "platform engineer": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "site reliability": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "full stack": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "backend developer": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "frontend developer": { soc: "2136", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+
+  // HEALTHCARE - Health & Care Worker route, lower threshold GBP 25,000
+  "registered nurse": { soc: "2231", minSalary: 25000, eligible: true, route: "Health & Care" },
+  "mental health nurse": { soc: "2231", minSalary: 25000, eligible: true, route: "Health & Care" },
+  "general practitioner": { soc: "2211", minSalary: 49923, eligible: true, route: "Health & Care" },
+  "pharmacist": { soc: "2213", minSalary: 25000, eligible: true, route: "Health & Care" },
+  "physiotherapist": { soc: "2217", minSalary: 25000, eligible: true, route: "Health & Care" },
+  "radiographer": { soc: "2217", minSalary: 25000, eligible: true, route: "Health & Care" },
+  "occupational therapist": { soc: "2217", minSalary: 25000, eligible: true, route: "Health & Care" },
+  "paramedic": { soc: "3213", minSalary: 25000, eligible: true, route: "Health & Care" },
+  "midwife": { soc: "2232", minSalary: 25000, eligible: true, route: "Health & Care" },
+  "surgeon": { soc: "2212", minSalary: 49923, eligible: true, route: "Health & Care" },
+  "dentist": { soc: "2214", minSalary: 25000, eligible: true, route: "Health & Care" },
+  "psychiatrist": { soc: "2211", minSalary: 49923, eligible: true, route: "Health & Care" },
+  "social worker": { soc: "2442", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "speech therapist": { soc: "2217", minSalary: 25000, eligible: true, route: "Health & Care" },
+  "dietitian": { soc: "2217", minSalary: 25000, eligible: true, route: "Health & Care" },
+  "biomedical scientist": { soc: "2211", minSalary: 25000, eligible: true, route: "Health & Care" },
+
+  // ENGINEERING - degree level, eligible
+  "civil engineer": { soc: "2121", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "mechanical engineer": { soc: "2122", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "electrical engineer": { soc: "2123", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "structural engineer": { soc: "2121", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "chemical engineer": { soc: "2125", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "aerospace engineer": { soc: "2122", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "robotics engineer": { soc: "2122", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+
+  // FINANCE - degree level, eligible
+  "accountant": { soc: "2421", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "financial analyst": { soc: "2422", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "investment analyst": { soc: "2422", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "risk analyst": { soc: "2422", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "actuar": { soc: "2423", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+
+  // EDUCATION - on Shortage List, lower threshold GBP 33,400
+  "teacher": { soc: "2314", minSalary: 33400, eligible: true, route: "Shortage List" },
+  "university lecturer": { soc: "2311", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "lecturer": { soc: "2311", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+
+  // ARCHITECTURE & CONSTRUCTION
+  "architect": { soc: "2431", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "quantity surveyor": { soc: "2432", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+
+  // LEGAL
+  "solicitor": { soc: "2411", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+  "barrister": { soc: "2411", minSalary: 41700, eligible: true, route: "Skilled Worker" },
+
+  // ============================================================
+  // NOT ELIGIBLE - removed from Skilled Worker list July 2025
+  // or never eligible (below RQF Level 6)
+  // ============================================================
+  "chef": { soc: "5434", minSalary: 999999, eligible: false, route: "Not Eligible - removed July 2025" },
+  "cook": { soc: "5434", minSalary: 999999, eligible: false, route: "Not Eligible - removed July 2025" },
+  "kitchen assistant": { soc: "9272", minSalary: 999999, eligible: false, route: "Not Eligible" },
+  "kitchen porter": { soc: "9272", minSalary: 999999, eligible: false, route: "Not Eligible" },
+  "waiter": { soc: "9272", minSalary: 999999, eligible: false, route: "Not Eligible" },
+  "waitress": { soc: "9272", minSalary: 999999, eligible: false, route: "Not Eligible" },
+  "barista": { soc: "9272", minSalary: 999999, eligible: false, route: "Not Eligible" },
+  "hospitality": { soc: "9272", minSalary: 999999, eligible: false, route: "Not Eligible" },
+  "housekeeper": { soc: "9132", minSalary: 999999, eligible: false, route: "Not Eligible" },
+  "cleaner": { soc: "9132", minSalary: 999999, eligible: false, route: "Not Eligible" },
+  "delivery driver": { soc: "8211", minSalary: 999999, eligible: false, route: "Not Eligible" },
+  "retail assistant": { soc: "7111", minSalary: 999999, eligible: false, route: "Not Eligible" },
+  "shop assistant": { soc: "7111", minSalary: 999999, eligible: false, route: "Not Eligible" },
+  "teaching assistant": { soc: "6126", minSalary: 999999, eligible: false, route: "Not Eligible - below RQF6" },
+  "learning support": { soc: "6126", minSalary: 999999, eligible: false, route: "Not Eligible - below RQF6" },
+  "classroom assistant": { soc: "6126", minSalary: 999999, eligible: false, route: "Not Eligible - below RQF6" },
+  "hlta": { soc: "6126", minSalary: 999999, eligible: false, route: "Not Eligible - below RQF6" },
+  "care worker": { soc: "6145", minSalary: 999999, eligible: false, route: "Not Eligible - social care route closed July 2025" },
+  "support worker": { soc: "6145", minSalary: 999999, eligible: false, route: "Not Eligible - social care route closed July 2025" },
+  "healthcare assistant": { soc: "6141", minSalary: 999999, eligible: false, route: "Not Eligible - below RQF6" },
+  "personal assistant": { soc: "6145", minSalary: 999999, eligible: false, route: "Not Eligible" },
+  "warehouse": { soc: "8149", minSalary: 999999, eligible: false, route: "Not Eligible - below RQF6" },
+  "security guard": { soc: "9241", minSalary: 999999, eligible: false, route: "Not Eligible - below RQF6" },
+  "self sponsored": { soc: "N/A", minSalary: 999999, eligible: false, route: "Not a legitimate sponsorship" },
+  "self-sponsored": { soc: "N/A", minSalary: 999999, eligible: false, route: "Not a legitimate sponsorship" },
+}
+
+// Check if a job is SOC-eligible and meets salary threshold
+function checkSOCEligibility(title, salaryMin) {
+  const t = title.toLowerCase()
+
+  for (const [keyword, data] of Object.entries(SOC_ELIGIBILITY)) {
+    if (t.includes(keyword)) {
+      // Role is explicitly NOT eligible for sponsorship
+      if (!data.eligible) {
+        return { eligible: false, reason: "Role not on Skilled Worker eligible list (SOC " + data.soc + ")" }
+      }
+      // Check salary threshold
+      if (salaryMin && salaryMin > 0 && salaryMin < data.minSalary) {
+        return { eligible: false, reason: "Salary below threshold (need GBP " + data.minSalary.toLocaleString() + " for " + data.route + ")" }
+      }
+      return { eligible: true, route: data.route, soc: data.soc, minSalary: data.minSalary }
+    }
+  }
+  // Unknown role - assume eligible (don't filter out)
+  return { eligible: true, route: "Skilled Worker", soc: "unknown" }
+}
 
 function useW() {
   const [w, setW] = useState(window.innerWidth)
@@ -115,6 +257,22 @@ async function batchCheck(employers) {
 }
 
 function scoreJob(job, sponsor) {
+  // SOC ELIGIBILITY CHECK - before anything else
+  const socCheck = checkSOCEligibility(job.title, job.salary_min)
+  if (!socCheck.eligible) {
+    return { score: -1, signals: [], fresher: false, verified: false }
+  }
+
+  // SALARY THRESHOLD CHECK - July 2025 thresholds
+  if (job.salary_min && job.salary_min > 1000) {
+    const isHealthCare = socCheck.route === "Health & Care"
+    const isShortage = socCheck.route === "Shortage List"
+    const threshold = isHealthCare ? 25000 : isShortage ? 33400 : 41700
+    if (job.salary_min < threshold) {
+      return { score: -1, signals: [], fresher: false, verified: false }
+    }
+  }
+
   // Strip HTML from description for accurate text matching
   const rawDesc = job.description
     ? job.description.replace(/<[^>]*>/g, " ").replace(/ +/g, " ")
@@ -136,6 +294,10 @@ function scoreJob(job, sponsor) {
     score += 40
     signals.push({ type: "verified", label: "Gov Verified" })
     if (sponsor.rating === "A") { score += 10; signals.push({ type: "rating", label: "A-Rated" }) }
+  }
+  // Show visa route from SOC check
+  if (socCheck.route && socCheck.route !== "Skilled Worker" && socCheck.route !== "unknown") {
+    signals.push({ type: "route", label: socCheck.route })
   }
 
   // STRONG VISA POSITIVE - explicit sponsorship offer
@@ -253,7 +415,7 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
       {job.signals && job.signals.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
           {job.signals.map((s, i) => {
-            const c = s.type === "verified" ? "#00D68F" : s.type === "rating" ? "#00D68F" : s.type === "visa" ? "#0057FF" : "#FF6B35"
+            const c = s.type === "verified" ? "#00D68F" : s.type === "rating" ? "#00D68F" : s.type === "visa" ? "#0057FF" : s.type === "route" ? "#7C3AED" : "#FF6B35"
             return <span key={i} style={{ background: c + "12", color: c, borderRadius: 4, padding: "2px 6px", fontSize: 10, fontWeight: 600 }}>{s.label}</span>
           })}
         </div>
