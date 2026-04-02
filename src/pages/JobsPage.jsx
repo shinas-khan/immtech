@@ -44,58 +44,61 @@ const JOBS_PER_PAGE = 20
 
 // Direct employer careers page database - 200+ major UK sponsors
 const CAREERS_DB = {
-  // Big Tech - verified working URLs
+  // Keys must be at least 6 chars and be the START of the employer name
+  // Big Tech
   "amazon": "https://www.amazon.jobs/en-gb",
   "google": "https://careers.google.com",
   "microsoft": "https://careers.microsoft.com",
-  "apple": "https://jobs.apple.com/en-gb/search",
-  "meta": "https://www.metacareers.com",
-  "ibm": "https://www.ibm.com/employment",
-  "oracle": "https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/jobsearch",
+  "apple inc": "https://jobs.apple.com/en-gb/search",
+  "meta platforms": "https://www.metacareers.com",
+  "ibm united": "https://www.ibm.com/employment",
+  "oracle corporation": "https://eeho.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/jobsearch",
   "salesforce": "https://careers.salesforce.com",
-  "adobe": "https://careers.adobe.com",
-  "intel": "https://jobs.intel.com",
-  "cisco": "https://jobs.cisco.com",
+  "adobe systems": "https://careers.adobe.com",
+  "intel corporation": "https://jobs.intel.com",
+  "cisco systems": "https://jobs.cisco.com",
   "nvidia": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite",
-  "dell": "https://jobs.dell.com",
-  "hp": "https://careers.hpe.com",
-  "samsung": "https://www.samsung.com/uk/aboutsamsung/careers",
+  "dell technologies": "https://jobs.dell.com",
+  "samsung electronics": "https://www.samsung.com/uk/aboutsamsung/careers",
   "qualcomm": "https://careers.qualcomm.com",
-  // UK Banks - verified working URLs
-  "barclays": "https://search.jobs.barclays",
-  "hsbc": "https://mycareer.hsbc.com/en_GB/external/SearchJobs",
-  "lloyds": "https://careers.lloydsbank.com",
-  "natwest": "https://jobs.natwestgroup.com",
-  "rbs": "https://jobs.natwestgroup.com",
+  // UK Banks - precise names
+  "barclays bank": "https://search.jobs.barclays",
+  "barclays plc": "https://search.jobs.barclays",
+  "hsbc bank": "https://mycareer.hsbc.com/en_GB/external/SearchJobs",
+  "hsbc holdings": "https://mycareer.hsbc.com/en_GB/external/SearchJobs",
+  "lloyds bank": "https://careers.lloydsbank.com",
+  "lloyds banking": "https://careers.lloydsbank.com",
+  "natwest bank": "https://jobs.natwestgroup.com",
+  "natwest group": "https://jobs.natwestgroup.com",
+  "natwest markets": "https://jobs.natwestgroup.com",
   "standard chartered": "https://scb.taleo.net/careersection/ex/jobsearch.ftl",
   "goldman sachs": "https://higher.gs.com/roles",
+  "jpmorgan chase": "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001",
   "jp morgan": "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001",
-  "jpmorgan": "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001",
   "morgan stanley": "https://morganstanley.tal.net/vx/lang-en-GB/candidate/jobboard/vacancy/1/adv",
   "deutsche bank": "https://careers.db.com",
   "blackrock": "https://careers.blackrock.com",
-  "fidelity": "https://jobs.fidelityinternational.com",
+  "fidelity international": "https://jobs.fidelityinternational.com",
   "aviva": "https://careers.aviva.co.uk",
-  "axa": "https://careers.axa.co.uk",
+  "axa insurance": "https://careers.axa.co.uk",
+  "axa health": "https://careers.axa.co.uk",
   "legal general": "https://careers.legalandgeneral.com",
-  // Consulting - verified working
+  // Consulting
   "deloitte": "https://apply.deloitte.com",
   "pwc": "https://www.pwc.co.uk/careers",
   "kpmg": "https://www.kpmg.com/uk/en/home/careers",
-  "ernst young": "https://careers.ey.com",
   "accenture": "https://www.accenture.com/gb-en/careers",
   "capgemini": "https://www.capgemini.com/gb-en/careers",
-  "cognizant": "https://careers.cognizant.com",
-  "infosys": "https://www.infosys.com/careers",
-  "tata consultancy": "https://ibegin.infosys.com/jobs",
-  "wipro": "https://careers.wipro.com",
-  // NHS and Healthcare
-  "nhs": "https://www.jobs.nhs.uk",
+  "cognizant technology": "https://careers.cognizant.com",
+  "infosys bpo": "https://www.infosys.com/careers",
+  "infosys limited": "https://www.infosys.com/careers",
+  "tata consultancy": "https://www.tcs.com/careers",
+  "wipro limited": "https://careers.wipro.com",
+  // NHS and Healthcare - NHS always goes to jobs.nhs.uk
   "bupa": "https://careers.bupa.co.uk",
-  "nuffield": "https://www.nuffieldhealth.com/careers",
-  "spire": "https://jobs.spirehealthcare.com",
+  "nuffield health": "https://www.nuffieldhealth.com/careers",
+  "spire healthcare": "https://jobs.spirehealthcare.com",
   "astrazeneca": "https://careers.astrazeneca.com",
-  "gsk": "https://jobs.gsk.com",
   "glaxosmithkline": "https://jobs.gsk.com",
   "pfizer": "https://pfizer.wd1.myworkdayjobs.com/PfizerCareers",
   "novartis": "https://www.novartis.com/careers",
@@ -105,15 +108,34 @@ const CAREERS_DB = {
   "abbvie": "https://careers.abbvie.com",
   "eli lilly": "https://jobs.lilly.com",
   "bristol myers": "https://careers.bms.com",
-  "merck": "https://jobs.merck.com",
+  "merck sharp": "https://jobs.merck.com",
   "care uk": "https://careers.careuk.com",
-  "four seasons": "https://www.fshcgroup.com/careers",
-  "flourish": "https://www.jobs.nhs.uk",
+  // Universities - precise names
+  "university of the west of scotland": "https://www.uws.ac.uk/about-uws/work-with-us",
+  "university of oxford": "https://jobs.ox.ac.uk",
+  "university of cambridge": "https://www.jobs.cam.ac.uk",
+  "university of london": "https://jobs.london.ac.uk",
+  "university of edinburgh": "https://www.vacancies.ed.ac.uk",
+  "university of manchester": "https://www.jobs.manchester.ac.uk",
+  "university of birmingham": "https://www.birmingham.ac.uk/jobs",
+  "university of bristol": "https://www.bristol.ac.uk/jobs",
+  "university of leeds": "https://jobs.leeds.ac.uk",
+  "university of sheffield": "https://www.sheffield.ac.uk/jobs",
+  "university of glasgow": "https://www.gla.ac.uk/explore/jobs",
+  "university of warwick": "https://warwick.ac.uk/services/humanresources/jobs",
+  "university of exeter": "https://jobs.exeter.ac.uk",
+  "university of southampton": "https://jobs.soton.ac.uk",
+  "university college london": "https://www.ucl.ac.uk/human-resources/working-ucl/vacancies",
+  "imperial college": "https://www.imperial.ac.uk/jobs",
+  "king's college": "https://jobs.kcl.ac.uk",
+  "london school of economics": "https://jobs.lse.ac.uk",
+  "queen mary university": "https://www.qmul.ac.uk/jobs",
   // Telecoms
   "bt group": "https://careers.bt.com",
-  "bt ": "https://careers.bt.com",
+  "british telecom": "https://careers.bt.com",
   "vodafone": "https://careers.vodafone.com/uk",
-  "sky": "https://careers.sky.com",
+  "sky limited": "https://careers.sky.com",
+  "sky uk": "https://careers.sky.com",
   "virgin media": "https://careers.virginmedia.com",
   // Engineering and Manufacturing
   "rolls royce": "https://careers.rolls-royce.com",
@@ -127,13 +149,14 @@ const CAREERS_DB = {
   "atkins": "https://www.atkinsrealis.com/careers",
   "aecom": "https://aecom.jobs",
   "mott macdonald": "https://www.mottmac.com/careers",
-  "wsp": "https://www.wsp.com/en-gb/careers",
-  "jacobs": "https://careers.jacobs.com",
+  "wsp global": "https://www.wsp.com/en-gb/careers",
+  "wsp uk": "https://www.wsp.com/en-gb/careers",
+  "jacobs engineering": "https://careers.jacobs.com",
   "bp": "https://www.bp.com/en/global/corporate/careers",
   "shell": "https://www.shell.com/careers",
   // Retail
   "tesco": "https://www.tesco-careers.com",
-  "sainsburys": "https://jobs.sainsburys.co.uk",
+  "sainsbury": "https://jobs.sainsburys.co.uk",
   "asda": "https://jobs.asda.com",
   "marks spencer": "https://jobs.marksandspencer.com",
   "waitrose": "https://www.waitrosejobs.com",
@@ -152,9 +175,9 @@ const CAREERS_DB = {
   "transport for london": "https://jobs.tfl.gov.uk",
   // Fintech
   "revolut": "https://www.revolut.com/careers",
-  "monzo": "https://monzo.com/careers",
-  "wise": "https://www.wise.jobs",
-  "starling": "https://www.starlingbank.com/careers",
+  "monzo bank": "https://monzo.com/careers",
+  "wise payments": "https://www.wise.jobs",
+  "starling bank": "https://www.starlingbank.com/careers",
   "klarna": "https://www.klarna.com/careers",
   // Media
   "bbc": "https://careers.bbc.co.uk",
@@ -169,31 +192,51 @@ const CAREERS_DB = {
 
 function getCareersUrl(employerName) {
   if (!employerName || employerName === "Unknown") return null
-  const clean = employerName.toLowerCase()
-    .replace(/\s*(ltd|limited|plc|llp|inc|group|uk|co|corp|corporation|holdings|services|solutions|nhs trust|nhs foundation|university hospital|hospitals|healthcare|health|medical|care|clinic|centre|center)\b/gi, "")
+
+  // Strict matching only - employer name must clearly contain the key
+  // We use minimum 6 char keys and require a strong match
+  const name = employerName.toLowerCase()
     .replace(/[^a-z0-9 ]/g, " ")
     .replace(/\s+/g, " ")
     .trim()
 
-  // Direct match
+  // Strip common suffixes for comparison
+  const stripped = name
+    .replace(/\b(ltd|limited|plc|llp|inc|group|uk|co|corp|corporation|holdings|nhs trust|nhs foundation trust|university hospital|hospitals|healthcare|health care|medical centre|medical center|clinics|clinic)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+
+  // Exact lookup first
+  if (CAREERS_DB[name]) return CAREERS_DB[name]
+  if (CAREERS_DB[stripped]) return CAREERS_DB[stripped]
+
+  // Try each key - but only match if:
+  // 1. Key is at least 6 characters
+  // 2. The employer name STARTS WITH the key (not just contains it)
+  // 3. Or the key is the full employer name
   for (const [key, url] of Object.entries(CAREERS_DB)) {
-    if (clean === key || clean.includes(key) || key.includes(clean)) {
+    if (key.length < 6) continue
+
+    // The employer must start with this key word
+    if (name.startsWith(key) || stripped.startsWith(key)) {
       return url
     }
-  }
 
-  // Word match - first significant word
-  const words = clean.split(" ").filter(w => w.length >= 4)
-  for (const word of words) {
-    for (const [key, url] of Object.entries(CAREERS_DB)) {
-      if (key.includes(word) || word.includes(key.split(" ")[0])) {
-        return url
-      }
+    // Or match as standalone words at the start
+    const keyWords = key.split(" ")
+    const nameWords = name.split(" ")
+    const strippedWords = stripped.split(" ")
+
+    // First word must match exactly
+    if (keyWords[0].length >= 5 && (nameWords[0] === keyWords[0] || strippedWords[0] === keyWords[0])) {
+      // And if key has 2+ words, second word must also match
+      if (keyWords.length === 1) return url
+      if (keyWords.length >= 2 && (nameWords[1] === keyWords[1] || strippedWords[1] === keyWords[1])) return url
     }
   }
 
-  // NHS fallback for any NHS employer
-  if (employerName.toLowerCase().includes("nhs") || employerName.toLowerCase().includes("hospital") || employerName.toLowerCase().includes("trust")) {
+  // Special cases - NHS employers
+  if (name.includes("nhs") || name.endsWith("trust") || name.includes("hospital")) {
     return "https://www.jobs.nhs.uk"
   }
 
