@@ -13,6 +13,8 @@ const VISA_KW = ["visa sponsorship","sponsor visa","certificate of sponsorship",
 
 const ALL_ROLES = ["All Jobs", ...ALL_JOBS]
 const ALL_LOCS = ["Anywhere in UK", ...ALL_LOCATIONS]
+const JOBS_PER_PAGE = 20
+
 const QUICK_ROLES = ["All Jobs","Software Engineer","Registered Nurse","Data Analyst","Cyber Security Analyst","Civil Engineer","Pharmacist","Data Scientist","Accountant","Physiotherapist","Social Worker","DevOps Engineer"]
 
 function useW() {
@@ -113,22 +115,6 @@ async function fetchReed(q, loc, page) {
 }
 
 function JobCard({ job, onSave, saved, navigate, mob }) {
-
-  const [careersUrl, setCareersUrl] = useState(null)
-  const [loadingCareers, setLoadingCareers] = useState(false)
-
-  // Fetch direct careers page for this employer
-  useEffect(() => {
-    if (!job.employer || job.employer === "Unknown") return
-    setLoadingCareers(true)
-    fetch(`/api/employer-careers?employer=${encodeURIComponent(job.employer)}`)
-      .then(r => r.json())
-      .then(data => { if (data.found) setCareersUrl(data.url) })
-      .catch(() => {})
-      .finally(() => setLoadingCareers(false))
-  }, [job.employer])
-
-
   const [expanded, setExpanded] = useState(false)
   const salary = job.salary_min || job.salary_max
     ? `GBP ${(job.salary_min || 0).toLocaleString()}${job.salary_max ? ` - GBP ${job.salary_max.toLocaleString()}` : "+"}`
@@ -227,13 +213,8 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
 
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
         <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", borderRadius: 8, padding: "9px 14px", fontSize: 12, fontWeight: 700, textDecoration: "none", textAlign: "center", minWidth: 80 }}>
-          Apply via {job.source}
+          Apply Now
         </a>
-        {careersUrl && (
-          <a href={careersUrl} target="_blank" rel="noopener noreferrer" style={{ background: "#00D68F", color: "#fff", borderRadius: 8, padding: "9px 12px", fontSize: 11, fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}>
-            Direct Careers Page
-          </a>
-        )}
         {job.sponsorInfo && (
           <button onClick={() => navigate(`/employer/${encodeURIComponent(job.employer)}`)} style={{ background: "#F0F5FF", border: "1px solid #0057FF20", color: "#0057FF", borderRadius: 8, padding: "9px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             Profile
@@ -254,14 +235,13 @@ export default function JobsPage() {
   const [fresherOnly, setFresherOnly] = useState(false)
   const [verifiedOnly, setVerifiedOnly] = useState(false)
   const [filters, setFilters] = useState({ salaryMin: "", salaryMax: "", jobType: "", source: "", sortBy: "Score" })
-  const [jobs, setJobs] = useState([])
+  const [allJobs, setAllJobs] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [searched, setSearched] = useState(false)
-  const [page, setPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(1)
   const [savedJobs, setSavedJobs] = useState(new Set())
-  const [hasMore, setHasMore] = useState(true)
-  const searchTimeout = useRef(null)
+  const topRef = useRef(null)
   const navigate = useNavigate()
   const w = useW()
   const mob = w < 768
@@ -269,6 +249,8 @@ export default function JobsPage() {
   const activeCount = Object.values(filters).filter(v => v !== "" && v !== "Score").length
   const filteredRoles = q.length > 0 ? ALL_ROLES.filter(r => r.toLowerCase().includes(q.toLowerCase())) : ALL_ROLES
   const filteredLocs = loc.length > 0 ? ALL_LOCS.filter(l => l.toLowerCase().includes(loc.toLowerCase())) : ALL_LOCS
+  const totalPages = Math.max(1, Math.ceil(allJobs.length / JOBS_PER_PAGE))
+  const jobs = allJobs.slice((currentPage - 1) * JOBS_PER_PAGE, currentPage * JOBS_PER_PAGE)
 
   // Load all jobs on mount
   useEffect(() => { doSearch(1, "", "") }, [])
@@ -344,9 +326,9 @@ export default function JobsPage() {
         return b.score - a.score
       })
 
-      setJobs(p === 1 ? scored : prev => [...prev, ...scored])
+      setAllJobs(scored)
+      setCurrentPage(1)
       setSearched(true)
-      setHasMore(scored.length >= 15)
     } catch (err) {
       setError("Search failed. Please try again.")
     } finally {
@@ -376,15 +358,20 @@ export default function JobsPage() {
   }
 
   const stats = {
-    total: jobs.length,
-    verified: jobs.filter(j => j.verified).length,
-    fresher: jobs.filter(j => j.fresherFriendly).length,
+    total: allJobs.length,
+    verified: allJobs.filter(j => j.verified).length,
+    fresher: allJobs.filter(j => j.fresherFriendly).length,
+  }
+
+  const goPage = (p) => {
+    setCurrentPage(p)
+    if (topRef.current) topRef.current.scrollIntoView({ behavior: "smooth" })
   }
 
   return (
     <div style={{ minHeight: "100vh", background: "#F8FAFF", fontFamily: "inherit" }}>
       <Nav />
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: mob ? "82px 4% 40px" : "96px 5% 60px" }}>
+      <div ref={topRef} style={{ maxWidth: 900, margin: "0 auto", padding: mob ? "82px 4% 40px" : "96px 5% 60px" }}>
 
         {/* Page header */}
         <div style={{ marginBottom: mob ? 14 : 20 }}>
@@ -558,7 +545,7 @@ export default function JobsPage() {
         )}
 
         {/* Stats row */}
-        {jobs.length > 0 && (
+        {allJobs.length > 0 && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
             {[
               { label: "Results", value: stats.total, color: "#0057FF" },
@@ -574,7 +561,7 @@ export default function JobsPage() {
         )}
 
         {/* Loading skeletons */}
-        {loading && jobs.length === 0 && (
+        {loading && allJobs.length === 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[...Array(5)].map((_, i) => (
               <div key={i} style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", border: "1px solid #E8EEFF", opacity: 1 - i * 0.15 }}>
@@ -598,16 +585,47 @@ export default function JobsPage() {
                 mob={mob}
               />
             ))}
-            {hasMore && (
-              <button onClick={() => doSearch(page + 1, q, loc)} disabled={loading} style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 12, padding: "14px", color: "#4B5675", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", marginTop: 4 }}>
-                {loading ? "Loading..." : "Load more results"}
-              </button>
+            {totalPages > 1 && (
+              <div style={{ marginTop: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                <div style={{ fontSize: 13, color: "#4B5675" }}>
+                  Showing {((currentPage - 1) * JOBS_PER_PAGE) + 1}-{Math.min(currentPage * JOBS_PER_PAGE, allJobs.length)} of {allJobs.length} jobs
+                </div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+                  <button onClick={() => goPage(currentPage - 1)} disabled={currentPage === 1}
+                    style={{ padding: "8px 14px", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: currentPage === 1 ? "not-allowed" : "pointer", border: "1.5px solid #E8EEFF", background: "#fff", color: currentPage === 1 ? "#9CA3B8" : "#0057FF", fontFamily: "inherit" }}>
+                    Prev
+                  </button>
+                  {(() => {
+                    const pages = []
+                    const delta = mob ? 1 : 2
+                    const left = Math.max(2, currentPage - delta)
+                    const right = Math.min(totalPages - 1, currentPage + delta)
+                    pages.push(1)
+                    if (left > 2) pages.push("...")
+                    for (let i = left; i <= right; i++) pages.push(i)
+                    if (right < totalPages - 1) pages.push("...")
+                    if (totalPages > 1) pages.push(totalPages)
+                    return pages.map((p, i) => p === "..." ? (
+                      <span key={"d"+i} style={{ padding: "8px 4px", color: "#9CA3B8", fontSize: 13 }}>...</span>
+                    ) : (
+                      <button key={p} onClick={() => goPage(p)}
+                        style={{ padding: "8px 13px", borderRadius: 9, fontSize: 13, fontWeight: p === currentPage ? 800 : 600, cursor: "pointer", border: "1.5px solid " + (p === currentPage ? "#0057FF" : "#E8EEFF"), background: p === currentPage ? "#0057FF" : "#fff", color: p === currentPage ? "#fff" : "#4B5675", fontFamily: "inherit", minWidth: 38 }}>
+                        {p}
+                      </button>
+                    ))
+                  })()}
+                  <button onClick={() => goPage(currentPage + 1)} disabled={currentPage === totalPages}
+                    style={{ padding: "8px 14px", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: currentPage === totalPages ? "not-allowed" : "pointer", border: "1.5px solid #E8EEFF", background: "#fff", color: currentPage === totalPages ? "#9CA3B8" : "#0057FF", fontFamily: "inherit" }}>
+                    Next
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}
 
         {/* No results */}
-        {searched && jobs.length === 0 && !loading && (
+        {searched && allJobs.length === 0 && !loading && (
           <div style={{ textAlign: "center", padding: "48px 20px", background: "#fff", borderRadius: 20, border: "1px solid #E8EEFF" }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>?</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: "#0A0F1E", marginBottom: 8 }}>No results found</div>
