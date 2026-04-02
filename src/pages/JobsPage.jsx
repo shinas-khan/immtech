@@ -99,6 +99,42 @@ async function fetchReed(q, loc, page) {
   }))
 }
 
+async function fetchReedRaw(keywords, loc, page) {
+  try {
+    const locationName = loc || "United Kingdom"
+    const params = new URLSearchParams({ keywords, locationName, resultsToTake: 40, resultsToSkip: (page - 1) * 40 })
+    const r = await fetch("https://uk-visa-jobs-six.vercel.app/api/reed?" + params)
+    if (!r.ok) return []
+    const data = await r.json()
+    return (data.results || []).map(j => ({
+      id: "reed_" + j.jobId, source: "Reed",
+      title: j.jobTitle || "", employer: j.employerName || "Unknown",
+      location: j.locationName || "",
+      salary_min: j.minimumSalary, salary_max: j.maximumSalary,
+      description: j.jobDescription || "", url: j.jobUrl || "#",
+      posted: j.date, full_time: j.fullTime,
+    }))
+  } catch { return [] }
+}
+
+async function fetchAdzunaRaw(what, loc, page) {
+  try {
+    const where = loc || "UK"
+    const params = new URLSearchParams({ app_id: ADZUNA_ID, app_key: ADZUNA_KEY, what, where, results_per_page: 40 })
+    const r = await fetch("https://api.adzuna.com/v1/api/jobs/gb/search/" + page + "?" + params)
+    if (!r.ok) return []
+    const data = await r.json()
+    return (data.results || []).map(j => ({
+      id: "adzuna_" + j.id, source: "Adzuna",
+      title: j.title || "", employer: (j.company && j.company.display_name) || "Unknown",
+      location: (j.location && j.location.display_name) || "UK",
+      salary_min: j.salary_min, salary_max: j.salary_max,
+      description: j.description || "", url: j.redirect_url || "#",
+      posted: j.created, full_time: j.contract_time === "full_time",
+    }))
+  } catch { return [] }
+}
+
 function JobCard({ job, onSave, saved, navigate, mob }) {
   const [expanded, setExpanded] = useState(false)
   const [careersUrl, setCareersUrl] = useState(null)
@@ -278,8 +314,8 @@ export default function JobsPage() {
       // Use multiple search terms to maximise results from free APIs
       // Each term targets different ways employers word sponsorship
       const searchTerms = searchQ
-        ? [searchQ + " visa sponsorship", searchQ + " certificate of sponsorship", searchQ + " skilled worker visa"]
-        : ["visa sponsorship uk", "certificate of sponsorship uk", "skilled worker visa jobs", "tier 2 sponsorship jobs"]
+        ? [searchQ + " visa sponsorship", searchQ + " skilled worker visa"]
+        : ["visa sponsorship uk", "certificate of sponsorship uk", "skilled worker visa jobs"]
 
       const fetches = await Promise.allSettled(
         searchTerms.flatMap(term => [
