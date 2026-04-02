@@ -165,7 +165,6 @@ const CAREERS_DB = {
   "cbre": "https://careers.cbre.com",
   "jll": "https://careers.jll.com",
   "savills": "https://careers.savills.com",
-  "academics": "https://www.academicseducation.co.uk/jobs",
 }
 
 function getCareersUrl(employerName) {
@@ -292,10 +291,16 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
   const [expanded, setExpanded] = useState(false)
   const careersUrl = getCareersUrl(job.employer)
 
+  const isDaily = (job.salary_max || 0) < 1000 && (job.salary_min || 0) < 1000
   const salaryText = job.salary_min || job.salary_max
-    ? ("GBP " + (job.salary_min || 0).toLocaleString() + (job.salary_max ? " - " + job.salary_max.toLocaleString() : "+"))
+    ? ((isDaily ? "GBP/day " : "GBP ") + (job.salary_min || 0).toLocaleString() + (job.salary_max ? " - " + job.salary_max.toLocaleString() : "+") + (isDaily ? "/day" : "/yr"))
     : null
-  const posted = job.posted ? new Date(job.posted).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""
+  const posted = (() => {
+    if (!job.posted) return ""
+    const d = new Date(job.posted)
+    if (isNaN(d.getTime())) return ""
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+  })()
   const scoreColor = job.verified ? "#00D68F" : job.score >= 60 ? "#0057FF" : job.score >= 30 ? "#FF6B35" : "#9CA3B8"
   const scoreLabel = job.verified ? "Verified" : job.score >= 60 ? "Very Likely" : job.score >= 30 ? "Likely" : "Possible"
 
@@ -499,24 +504,20 @@ export default function JobsPage() {
       let rawJobs = []
       let total = 0
 
-      const [reedRes, adzunaRes] = await Promise.allSettled([
+      // Fetch first 6 pages from both sources simultaneously
+      const initialFetches = await Promise.allSettled([
         fetchReed(searchQ, cleanLoc, 1),
         fetchAdzuna(searchQ, cleanLoc, 1),
-      ])
-      if (reedRes.status === "fulfilled") { rawJobs.push(...reedRes.value.jobs); total += reedRes.value.total }
-      if (adzunaRes.status === "fulfilled") { rawJobs.push(...adzunaRes.value.jobs); total += adzunaRes.value.total }
-
-      // Fetch pages 2, 3, 4 to get more jobs
-      const moreFetches = await Promise.allSettled([
         fetchReed(searchQ, cleanLoc, 2),
         fetchAdzuna(searchQ, cleanLoc, 2),
         fetchReed(searchQ, cleanLoc, 3),
         fetchAdzuna(searchQ, cleanLoc, 3),
-        fetchReed(searchQ, cleanLoc, 4),
-        fetchAdzuna(searchQ, cleanLoc, 4),
       ])
-      for (const res of moreFetches) {
-        if (res.status === "fulfilled") rawJobs.push(...res.value.jobs)
+      for (const res of initialFetches) {
+        if (res.status === "fulfilled") {
+          rawJobs.push(...res.value.jobs)
+          if (res.value.total > 0) total = Math.max(total, res.value.total)
+        }
       }
 
       if (rawJobs.length === 0) { setError("No results found. Try a different search."); setLoading(false); return }
@@ -563,6 +564,45 @@ export default function JobsPage() {
 
       setAllJobs(scored)
       setSearched(true)
+      setTotalJobs(total > 0 ? total : scored.length)
+
+      // Load more pages in background silently
+      setTimeout(async () => {
+        try {
+          const bgFetches = await Promise.allSettled([
+            fetchReed(searchQ, cleanLoc, 4),
+            fetchAdzuna(searchQ, cleanLoc, 4),
+            fetchReed(searchQ, cleanLoc, 5),
+            fetchAdzuna(searchQ, cleanLoc, 5),
+            fetchReed(searchQ, cleanLoc, 6),
+            fetchAdzuna(searchQ, cleanLoc, 6),
+          ])
+          let bgJobs = []
+          for (const res of bgFetches) {
+            if (res.status === "fulfilled") bgJobs.push(...res.value.jobs)
+          }
+          if (bgJobs.length > 0) {
+            const bgSponsors = await batchCheckSponsors(bgJobs.map(j => j.employer))
+            const bgScored = bgJobs.map(j => {
+              const sponsorInfo = bgSponsors[j.employer]
+              const { score, signals, fresherFriendly, verified } = scoreJob(j, sponsorInfo)
+              return { ...j, score, signals, fresherFriendly, verified, sponsorInfo }
+            }).filter(j => j.score >= 0)
+            setAllJobs(prev => {
+              const existingIds = new Set(prev.map(j => j.id))
+              const newJobs = bgScored.filter(j => !existingIds.has(j.id))
+              if (newJobs.length === 0) return prev
+              const combined = [...prev, ...newJobs]
+              combined.sort((a, b) => {
+                if (a.verified && !b.verified) return -1
+                if (!a.verified && b.verified) return 1
+                return b.score - a.score
+              })
+              return combined
+            })
+          }
+        } catch (e) { console.warn("Background fetch failed:", e) }
+      }, 1500)
     } catch (err) {
       setError("Search failed. Please try again.")
       console.error(err)
