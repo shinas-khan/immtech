@@ -202,23 +202,14 @@ const SOC_ELIGIBILITY = {
 }
 
 // Check if a job is SOC-eligible and meets salary threshold
-function checkSOCEligibility(title, salaryMin) {
+function checkSOCEligibility(title) {
   const t = title.toLowerCase()
-
   for (const [keyword, data] of Object.entries(SOC_ELIGIBILITY)) {
     if (t.includes(keyword)) {
-      // Role is explicitly NOT eligible for sponsorship
-      if (!data.eligible) {
-        return { eligible: false, reason: "Role not on Skilled Worker eligible list (SOC " + data.soc + ")" }
-      }
-      // Check salary threshold
-      if (salaryMin && salaryMin > 0 && salaryMin < data.minSalary) {
-        return { eligible: false, reason: "Salary below threshold (need GBP " + data.minSalary.toLocaleString() + " for " + data.route + ")" }
-      }
-      return { eligible: true, route: data.route, soc: data.soc, minSalary: data.minSalary }
+      if (!data.eligible) return { eligible: false }
+      return { eligible: true, route: data.route, soc: data.soc }
     }
   }
-  // Unknown role - assume eligible (don't filter out)
   return { eligible: true, route: "Skilled Worker", soc: "unknown" }
 }
 
@@ -258,20 +249,12 @@ async function batchCheck(employers) {
 
 function scoreJob(job, sponsor) {
   // SOC ELIGIBILITY CHECK - before anything else
-  const socCheck = checkSOCEligibility(job.title, job.salary_min)
+  const socCheck = checkSOCEligibility(job.title)
   if (!socCheck.eligible) {
     return { score: -1, signals: [], fresher: false, verified: false }
   }
 
-  // SALARY THRESHOLD CHECK - July 2025 thresholds
-  if (job.salary_min && job.salary_min > 1000) {
-    const isHealthCare = socCheck.route === "Health & Care"
-    const isShortage = socCheck.route === "Shortage List"
-    const threshold = isHealthCare ? 25000 : isShortage ? 33400 : 41700
-    if (job.salary_min < threshold) {
-      return { score: -1, signals: [], fresher: false, verified: false }
-    }
-  }
+  // Salary threshold not enforced - routes have different minimums
 
   // Strip HTML from description for accurate text matching
   const rawDesc = job.description
