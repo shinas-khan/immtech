@@ -746,7 +746,7 @@ export default function JobsPage() {
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <div style={{ fontSize: 13, color: "#4B5675" }}>
-                Showing {((currentPage - 1) * JOBS_PER_PAGE) + 1} - {Math.min(currentPage * JOBS_PER_PAGE, allJobs.length)} of {allJobs.length} verified sponsored jobs &nbsp;|&nbsp; Page {currentPage} of {totalPages}
+                Showing {((currentPage - 1) * JOBS_PER_PAGE) + 1} - {Math.min(currentPage * JOBS_PER_PAGE, allJobs.length)} of {allJobs.length} verified sponsored jobs | Page {currentPage} of {totalPages}
               </div>
               {loading && <span style={{ fontSize: 12, color: "#0057FF", fontWeight: 600 }}>Updating...</span>}
             </div>
