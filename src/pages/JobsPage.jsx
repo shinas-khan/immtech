@@ -8,7 +8,11 @@ const ADZUNA_ID = "344e86d1"
 const ADZUNA_KEY = "039c47ae80bab92aef99751a471040fb"
 const JOBS_PER_PAGE = 20
 const FRESHER_KW = ["graduate","entry level","junior","trainee","apprentice","no experience","fresh graduate","new graduate","grad scheme","graduate scheme","placement","internship"]
-const NEG_KW = ["must have right to work","no sponsorship","sponsorship not available","cannot sponsor","uk residents only","british nationals only","no visa"]
+const NEG_KW = ["must have right to work","no sponsorship","sponsorship not available","cannot sponsor","uk residents only","british nationals only","no visa sponsorship","must be eligible to work in the uk without sponsorship","not able to offer sponsorship","unable to offer sponsorship for this role","will not be open to sponsorship","this post will not be open to sponsorship","salary does not meet the home office"]
+
+const ALL_ROLES = ["All Jobs", ...ALL_JOBS]
+const ALL_LOCS = ["Anywhere in UK", ...ALL_LOCATIONS]
+const QUICK_ROLES = ["All Jobs","Software Engineer","Registered Nurse","Data Analyst","Cyber Security Analyst","Civil Engineer","Pharmacist","Data Scientist","Accountant","Physiotherapist","Social Worker","DevOps Engineer"]
 
 async function checkSponsor(employerName) {
   if (!employerName || employerName === "Unknown") return null
@@ -145,24 +149,17 @@ export default function JobsPage() {
 
   const setFilter = (k, v) => setFilters(f => ({ ...f, [k]: f[k] === v ? "" : v }))
   const activeCount = Object.values(filters).filter(v => v !== "" && v !== "Score").length
-  const displayJobs = q.length > 0 ? smartSearch(q, ALL_JOBS) : ALL_JOBS
-  const displayLocs = loc.length > 0 ? ALL_LOCATIONS.filter(l => l.toLowerCase().includes(loc.toLowerCase())) : ALL_LOCATIONS
+  const filteredRoles = q.length > 0 ? ALL_ROLES.filter(r => r.toLowerCase().includes(q.toLowerCase())) : ALL_ROLES
+  const filteredLocs = loc.length > 0 ? ALL_LOCS.filter(l => l.toLowerCase().includes(loc.toLowerCase())) : ALL_LOCS
   const totalPages = Math.max(1, Math.ceil(allJobs.length / JOBS_PER_PAGE))
   const jobs = allJobs.slice((currentPage - 1) * JOBS_PER_PAGE, currentPage * JOBS_PER_PAGE)
 
-  // Auto-search when query changes (with debounce)
-  useEffect(() => {
-    if (q.trim().length < 2) return
-    clearTimeout(searchTimeout.current)
-    searchTimeout.current = setTimeout(() => {
-      handleSearch(1, true)
-    }, 600)
-    return () => clearTimeout(searchTimeout.current)
-  }, [q])
+  // Load all jobs on mount
+  useEffect(() => { handleSearch(1) }, [])
 
   // Auto-search from URL params
   useEffect(() => {
-    if (searchParams.get("q")) handleSearch(1, true)
+    if (searchParams.get("q")) handleSearch(1)
   }, [])
 
   const handleSave = async (job) => {
@@ -177,7 +174,6 @@ export default function JobsPage() {
 
   const handleSearch = useCallback(async (p = 1, silent = false) => {
     const searchQ = q.trim()
-    if (!searchQ) return
     setLoading(true)
     setError(""); setCurrentPage(1)
     try {
@@ -237,12 +233,17 @@ export default function JobsPage() {
             <input value={q} onChange={e => { setQ(e.target.value); setShowQ(true); setShowL(false) }} onFocus={() => { setShowQ(true); setShowL(false) }} onBlur={() => setTimeout(() => setShowQ(false), 200)} onKeyDown={e => e.key === "Enter" && handleSearch(1)} placeholder="Job title or keyword... (results appear as you type)" style={{ width: "100%", border: "none", outline: "none", background: "transparent", padding: "14px 14px 14px 44px", fontSize: 15, color: "#0A0F1E", fontFamily: "inherit" }} />
             {loading && <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#0057FF", fontWeight: 600 }}>Searching...</span>}
             {showQ && q.length > 0 && (
-              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #E8EEFF", borderRadius: "0 0 14px 14px", boxShadow: "0 16px 48px rgba(0,57,255,0.1)", maxHeight: 240, overflowY: "auto", zIndex: 300 }}>
-                {displayJobs.slice(0, 8).map(s => (
-                  <div key={s} onMouseDown={() => { setQ(s); setShowQ(false) }} style={{ padding: "11px 16px", cursor: "pointer", fontSize: 14, color: "#0A0F1E", borderBottom: "1px solid rgba(232,238,255,0.5)", display: "flex", alignItems: "center", gap: 8 }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#0057FF08"}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                  ><span style={{ fontSize: 12, color: "#9CA3B8" }}></span>{s}</div>
+              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #E8EEFF", borderRadius: "0 0 14px 14px", boxShadow: "0 16px 48px rgba(0,57,255,0.1)", maxHeight: 320, overflowY: "auto", zIndex: 300 }}>
+                <div style={{ padding: "8px 14px 6px", fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #F8FAFF" }}>
+                  {q ? filteredRoles.length + " roles" : "All " + ALL_JOBS.length + " roles"}
+                </div>
+                {filteredRoles.map(role => (
+                  <div key={role}
+                    onMouseDown={() => { setQ(role === "All Jobs" ? "" : role); handleSearch(1); setShowQ(false) }}
+                    style={{ padding: "10px 16px", cursor: "pointer", fontSize: 14, color: role === "All Jobs" ? "#0057FF" : "#0A0F1E", fontWeight: role === "All Jobs" ? 700 : 400, background: role === "All Jobs" ? "#F0F5FF" : "transparent", borderBottom: "1px solid rgba(232,238,255,0.4)" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#F8FAFF"}
+                    onMouseLeave={e => e.currentTarget.style.background = role === "All Jobs" ? "#F0F5FF" : "transparent"}
+                  >{role}</div>
                 ))}
               </div>
             )}
@@ -255,11 +256,16 @@ export default function JobsPage() {
               <input value={loc} onChange={e => { setLoc(e.target.value); setShowL(true); setShowQ(false) }} onFocus={() => { setShowL(true); setShowQ(false) }} onBlur={() => setTimeout(() => setShowL(false), 200)} onKeyDown={e => e.key === "Enter" && handleSearch(1)} placeholder="City or location..." style={{ width: "100%", border: "none", outline: "none", background: "transparent", padding: "13px 13px 13px 40px", fontSize: 14, color: "#0A0F1E", fontFamily: "inherit" }} />
               {showL && (
                 <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #E8EEFF", borderRadius: "0 0 14px 14px", boxShadow: "0 16px 48px rgba(0,57,255,0.1)", maxHeight: 200, overflowY: "auto", zIndex: 300 }}>
-                  {displayLocs.slice(0, 8).map(s => (
-                    <div key={s} onMouseDown={() => { setLoc(s); setShowL(false) }} style={{ padding: "11px 16px", cursor: "pointer", fontSize: 14, color: "#0A0F1E", borderBottom: "1px solid rgba(232,238,255,0.5)", display: "flex", alignItems: "center", gap: 8 }}
-                      onMouseEnter={e => e.currentTarget.style.background = "#0057FF08"}
-                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                    ><span style={{ fontSize: 12, color: "#9CA3B8" }}></span>{s}</div>
+                  <div style={{ padding: "8px 14px 6px", fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #F8FAFF" }}>
+                    {loc ? filteredLocs.length + " locations" : "All " + ALL_LOCATIONS.length + " UK cities"}
+                  </div>
+                  {filteredLocs.map(city => (
+                    <div key={city}
+                      onMouseDown={() => { setLoc(city === "Anywhere in UK" ? "" : city); handleSearch(1); setShowL(false) }}
+                      style={{ padding: "10px 16px", cursor: "pointer", fontSize: 14, color: city === "Anywhere in UK" ? "#0057FF" : "#0A0F1E", fontWeight: city === "Anywhere in UK" ? 700 : 400, background: city === "Anywhere in UK" ? "#F0F5FF" : "transparent", borderBottom: "1px solid rgba(232,238,255,0.4)" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "#F8FAFF"}
+                      onMouseLeave={e => e.currentTarget.style.background = city === "Anywhere in UK" ? "#F0F5FF" : "transparent"}
+                    >{city}</div>
                   ))}
                 </div>
               )}
@@ -272,6 +278,16 @@ export default function JobsPage() {
               Search
             </button>
           </div>
+        </div>
+
+        {/* Quick role pills */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+          {QUICK_ROLES.map(role => (
+            <button key={role} onClick={() => { const v = role === "All Jobs" ? "" : role; setQ(v); setTimeout(() => handleSearch(1), 50) }}
+              style={{ padding: "5px 11px", borderRadius: 100, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1.5px solid " + ((role === "All Jobs" && !q) || q === role ? "#0057FF" : "#E8EEFF"), background: (role === "All Jobs" && !q) || q === role ? "#0057FF0D" : "#fff", color: (role === "All Jobs" && !q) || q === role ? "#0057FF" : "#4B5675", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+              {role}
+            </button>
+          ))}
         </div>
 
         {/* Toggles */}
