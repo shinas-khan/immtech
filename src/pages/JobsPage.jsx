@@ -32,7 +32,18 @@ const NEG_KW = [
   "you must not require sponsorship", "self sponsored", "self-sponsored",
   "sponsor yourself", "acquire own business", "own your own business",
   "business opportunity for", "franchise opportunity", "professional fees will apply",
-  "registration fee", "upfront fee", "admin fee"
+  "registration fee", "upfront fee", "admin fee",
+  "not able to offer sponsorship",
+  "unable to offer sponsorship for this role",
+  "will not be able to progress any candidates who require",
+  "cannot progress candidates who require",
+  "require a certificate of sponsorship to work",
+  "must not require sponsorship to work in the uk",
+  "this role does not qualify for sponsorship",
+  "ineligible for visa sponsorship",
+  "this position is not eligible for sponsorship",
+  "not eligible to apply for a certificate of sponsorship",
+  "we are not in a position to sponsor"
 ]
 
 // VISA POSITIVE KEYWORDS 
@@ -192,9 +203,9 @@ function scoreJob(job, sponsorData) {
   let hasStrongVisa = false
 
   if (sponsorData) {
-    score += 50
+    score += 55
     signals.push({ type: "verified", label: "Gov Verified" })
-    if (sponsorData.rating === "A") { score += 15; signals.push({ type: "rating", label: "A-Rated" }) }
+    if (sponsorData.rating === "A") { score += 10; signals.push({ type: "rating", label: "A-Rated" }) }
   }
 
   for (const kw of VISA_POS) {
@@ -206,8 +217,17 @@ function scoreJob(job, sponsorData) {
     }
   }
 
-  // Only show if gov verified OR has explicit strong visa language
-  if (!sponsorData && !hasStrongVisa) return null
+  // Show if EITHER:
+  // 1. Gov verified employer (they are licensed to sponsor - most reliable signal)
+  // 2. Has explicit strong visa confirmation in description
+  // 3. Has any visa keyword AND a reasonable score
+  const hasAnyVisa = VISA_POS.some(kw => text.includes(kw)) ||
+    ["visa sponsorship", "certificate of sponsorship", "skilled worker visa",
+     "tier 2", "sponsorship available", "will sponsor", "sponsorship provided",
+     "open to sponsorship", "sponsorship considered"].some(kw => text.includes(kw))
+
+  if (!sponsorData && !hasAnyVisa) return null
+  if (!sponsorData && hasAnyVisa && score < 20) return null
 
   for (const kw of FRESHER_KW) { if (text.includes(kw)) { fresherFriendly = true; break } }
   if (job.salary_min && job.salary_min > 500) { score += 5; signals.push({ type: "salary", label: "Salary shown" }) }
