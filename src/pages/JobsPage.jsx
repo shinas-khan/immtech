@@ -1,285 +1,148 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { ALL_JOBS, ALL_LOCATIONS } from "../lib/constants"
 import { supabase } from "../lib/supabase"
 import Nav from "../components/Nav"
 
-//  CONFIG 
-const ADZUNA_ID  = "344e86d1"
+const ADZUNA_ID = "344e86d1"
 const ADZUNA_KEY = "039c47ae80bab92aef99751a471040fb"
-const PER_PAGE   = 20
 
-//  QUICK ROLE PILLS 
-const QUICK = [
-  "All Jobs","Software Engineer","Registered Nurse","Data Analyst",
-  "Cyber Security Analyst","Civil Engineer","Pharmacist","Data Scientist",
-  "Accountant","Physiotherapist","Social Worker","DevOps Engineer",
-]
+const FRESHER_KW = ["graduate","entry level","junior","trainee","apprentice","no experience","fresh graduate","new graduate","grad scheme","graduate scheme","placement","internship"]
+const NEG_KW = ["must have right to work","no sponsorship","sponsorship not available","cannot sponsor","uk residents only","british nationals only","no visa sponsorship","must be eligible to work in the uk without sponsorship"]
+const VISA_KW = ["visa sponsorship","sponsor visa","certificate of sponsorship","cos provided","skilled worker visa","tier 2","ukvi","sponsorship available","will sponsor","sponsorship provided","visa support","sponsorship considered","open to sponsorship","visa provided","relocation package","international applicants"]
 
-//  SPONSORSHIP CONFIRMATION KEYWORDS 
-// A job MUST contain at least one of these to be shown.
-// This is the core rule: no confirmation = not shown.
-const CONFIRM_KW = [
-  "certificate of sponsorship",
-  "cos will be provided",
-  "cos provided",
-  "we will sponsor",
-  "visa sponsorship provided",
-  "visa sponsorship available",
-  "visa sponsorship offered",
-  "sponsorship is available",
-  "sponsorship provided",
-  "sponsorship available",
-  "we can sponsor",
-  "will sponsor",
-  "open to sponsorship",
-  "tier 2 sponsorship",
-  "ukvi sponsorship",
-  "skilled worker visa sponsorship",
-  "visa support provided",
-  "sponsorship for the right candidate",
-  "sponsorship considered",
-  "visa provided",
-  "will provide visa sponsorship",
-  "able to offer sponsorship",
-  "happy to sponsor",
-  "can provide sponsorship",
-]
+const ALL_ROLES = ["All Jobs", ...ALL_JOBS]
+const ALL_LOCS = ["Anywhere in UK", ...ALL_LOCATIONS]
+const QUICK_ROLES = ["All Jobs","Software Engineer","Registered Nurse","Data Analyst","Cyber Security Analyst","Civil Engineer","Pharmacist","Data Scientist","Accountant","Physiotherapist","Social Worker","DevOps Engineer"]
 
-//  HARD REJECTION KEYWORDS 
-// If any of these appear the job is removed regardless of anything else.
-const REJECT_KW = [
-  "no sponsorship",
-  "cannot sponsor",
-  "no visa sponsorship",
-  "sponsorship not available",
-  "unable to offer sponsorship",
-  "unable to sponsor",
-  "we do not offer sponsorship",
-  "does not offer sponsorship",
-  "cannot offer visa",
-  "not in a position to sponsor",
-  "sponsorship cannot be offered",
-  "we are unable to offer visa",
-  "uk residents only",
-  "british nationals only",
-  "must have right to work",
-  "must be eligible to work in the uk without",
-  "right to work without sponsorship",
-  "must already have the right to work",
-  "you must have the right to work",
-  "applicants must have the right to work",
-  "only applicants with the right to work",
-  "right to work in the uk is required",
-  "own right to work",
-  "not eligible for uk visa sponsorship",
-  "not eligible for visa sponsorship",
-  "this post is not eligible for",
-  "not open to sponsorship",
-  "will not be open to sponsorship",
-  "this post will not be open to sponsorship",
-  "salary does not meet the home office",
-  "does not meet the home office requirements",
-  "unable to accept applicants with skilled worker",
-  "not open to skilled worker visa",
-  "cannot accept applicants who require sponsorship",
-  "we cannot accept applications from candidates who require",
-  "this vacancy does not offer",
-  "this role does not offer sponsorship",
-  "no work permit",
-  "work permit will not be sponsored",
-  "cannot provide certificate of sponsorship",
-  "visa sponsorship is not available",
-  "sponsorship is not provided",
-  "we do not provide sponsorship",
-  "you must not require sponsorship",
-  "not able to offer sponsorship",
-  "unable to offer sponsorship for this role",
-  "will not be able to progress any candidates who require",
-  "require a certificate of sponsorship to work",
-  "this role does not qualify for sponsorship",
-  "this position is not eligible for sponsorship",
-  "we are not in a position to sponsor",
-  "self sponsored",
-  "self-sponsored",
-  "sponsor yourself",
-  "acquire own business",
-  "own your own business",
-  "professional fees will apply",
-  "registration fee",
-  "upfront fee",
-  "admin fee required",
-]
+function useW() {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1200)
+  useEffect(() => {
+    const fn = () => setW(window.innerWidth)
+    window.addEventListener("resize", fn)
+    return () => window.removeEventListener("resize", fn)
+  }, [])
+  return w
+}
 
-//  INELIGIBLE ROLES (SOC) 
-const INELIGIBLE = [
-  "teaching assistant","learning support","classroom assistant","hlta",
-  "chef ","sous chef","head chef","kitchen porter","kitchen assistant",
-  "waiter","waitress","barista","hospitality assistant",
-  "housekeeper","cleaner ","cleaning operative",
-  "delivery driver","van driver","lorry driver",
-  "retail assistant","shop assistant",
-  "care assistant","healthcare assistant",
-  "warehouse operative","warehouse assistant","packing operative",
-  "security guard","security officer ",
-]
-
-//  FRESHER KEYWORDS 
-const FRESHER_KW = [
-  "graduate","entry level","junior","trainee","apprentice",
-  "grad scheme","graduate scheme","no experience required",
-]
-
-//  SPONSOR REGISTER CHECK 
-async function checkSponsor(name) {
-  if (!name || name === "Unknown") return null
+async function checkSponsor(employerName) {
+  if (!employerName || employerName === "Unknown") return null
   try {
-    const clean = name
-      .replace(/\\s+(ltd|limited|plc|llp|inc|group|uk|co|corp|corporation|holdings|services|solutions|international|technologies|technology|systems|consulting|consultancy|recruitment|staffing|agency)\\.?$/gi, "")
-      .replace(/[^\\w\\s]/g, " ").trim()
+    const clean = employerName
+      .replace(/\s+(ltd|limited|plc|llp|inc|group|uk|co|corp|corporation|holdings|services|solutions|international|technologies|technology|systems|consulting|consultancy|recruitment|staffing|agency)\.?$/gi, "")
+      .replace(/[^\w\s]/g, " ").trim()
     if (clean.length < 2) return null
-    const { data: a } = await supabase.from("sponsors")
-      .select("organisation_name,town,route,rating")
-      .ilike("organisation_name", name).limit(1)
-    if (a && a[0]) return a[0]
-    const { data: b } = await supabase.from("sponsors")
-      .select("organisation_name,town,route,rating")
-      .ilike("organisation_name", "%" + clean + "%").limit(1)
-    if (b && b[0]) return b[0]
-    const w = clean.split(" ")[0]
-    if (w.length >= 4) {
-      const { data: c } = await supabase.from("sponsors")
-        .select("organisation_name,town,route,rating")
-        .ilike("organisation_name", w + "%").limit(1)
-      if (c && c[0]) return c[0]
+    const { data: exact } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", employerName).limit(1)
+    if (exact?.[0]) return exact[0]
+    const { data: contains } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", `%${clean}%`).limit(1)
+    if (contains?.[0]) return contains[0]
+    const firstWord = clean.split(" ")[0]
+    if (firstWord.length >= 4) {
+      const { data: partial } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", `${firstWord}%`).limit(1)
+      if (partial?.[0]) return partial[0]
     }
     return null
   } catch { return null }
 }
 
-async function batchCheck(employers) {
+async function batchCheckSponsors(employers) {
   const unique = [...new Set(employers.filter(Boolean))]
-  const map = {}
+  const results = {}
   for (let i = 0; i < unique.length; i += 8) {
-    await Promise.all(
-      unique.slice(i, i + 8).map(async e => { map[e] = await checkSponsor(e) })
-    )
+    const batch = unique.slice(i, i + 8)
+    await Promise.all(batch.map(async (emp) => { results[emp] = await checkSponsor(emp) }))
   }
-  return map
+  return results
 }
 
-//  CORE FILTER 
-// Returns true only if the job is confirmed to offer sponsorship.
-// Three-step logic:
-//   1. Reject if title is an ineligible role (SOC check)
-//   2. Reject if any hard rejection keyword found in text
 // SPONSORSHIP LIKELIHOOD SCORING
-//
-// Instead of hard pass/fail, every job gets a likelihood score 0-100.
-// Score determines the label on the card:
-//   80-100 = "Confirmed"   (gov verified + explicit keywords)
-//   60-79  = "Very Likely" (gov verified OR strong keywords)
-//   40-59  = "Likely"      (some positive signals, no rejections)
-//   1-39   = "Possible"    (no strong signals but no rejection either)
-//   0      = removed       (hard rejection OR ineligible role)
-//
-// This shows more jobs but ranks them honestly by likelihood.
+// Every job gets a score 0-100. Score = 0 means hard filtered out.
+// Score determines badge:
+//   80-100 -> "Confirmed"   green  (gov verified + explicit keyword)
+//   60-79  -> "Very Likely" blue   (gov verified OR strong keyword)
+//   40-59  -> "Likely"      orange (some visa signals, no rejection)
+//   1-39   -> "Possible"    grey   (no strong signal but no rejection either)
+//   0      -> hidden        (explicit rejection phrase found)
+function scoreJob(job, sponsorData) {
+  const rawDesc = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")
+  const text = (job.title + " " + rawDesc + " " + job.employer).toLowerCase()
 
-function scoreJob(job, sponsor) {
-  const title = (job.title || "").toLowerCase()
-
-  // Hard remove - ineligible SOC role
-  for (const r of INELIGIBLE) {
-    if (title.includes(r.trim())) return 0
-  }
-
-  const raw  = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")
-  const text = (title + " " + raw + " " + (job.employer||"")).toLowerCase()
-
-  // Hard remove - explicit rejection phrase
-  for (const neg of REJECT_KW) {
-    if (text.includes(neg)) return 0
-  }
+  // Hard reject - explicit no-sponsorship phrase
+  for (const neg of NEG_KW) { if (text.includes(neg)) return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" } }
 
   let score = 0
+  const signals = []
+  let fresherFriendly = false
 
-  // +55 on gov register (employer is licensed to sponsor)
-  if (sponsor) {
+  // +55 employer on gov register (licensed to sponsor - strongest signal)
+  if (sponsorData) {
     score += 55
-    if (sponsor.rating === "A") score += 10
+    signals.push({ type: "verified", label: "Gov Verified" })
+    if (sponsorData.rating === "A") { score += 10; signals.push({ type: "rating", label: "A-Rated" }) }
   }
 
   // +30 explicit confirmation keyword
-  for (const kw of CONFIRM_KW) {
-    if (text.includes(kw)) { score += 30; break }
+  const strongKW = ["certificate of sponsorship","cos provided","cos will be provided","we will sponsor","visa sponsorship provided","sponsorship is available","sponsorship provided","sponsorship available","will sponsor","able to offer sponsorship","happy to sponsor","can provide sponsorship","visa sponsorship offered"]
+  for (const kw of strongKW) {
+    if (text.includes(kw)) { score += 30; signals.push({ type: "visa", label: "Sponsorship Confirmed" }); break }
   }
 
-  // +10 general visa keyword (weaker signal)
-  const weakKW = ["visa sponsorship","sponsor visa","skilled worker visa","tier 2","ukvi","international applicants","relocation package"]
+  // +12 general visa keyword (weaker signal)
+  const weakKW = ["visa sponsorship","sponsor visa","skilled worker visa","tier 2","ukvi","open to sponsorship","sponsorship considered","international applicants","relocation package","visa support"]
   for (const kw of weakKW) {
-    if (text.includes(kw)) { score += 10; break }
+    if (text.includes(kw)) { score += 12; signals.push({ type: "visa", label: "Visa Mentioned" }); break }
   }
 
-  // +5 salary shown
-  if (job.salary_min && job.salary_min > 500) score += 5
+  // If still 0 - no signals but no rejection - show as Possible
+  if (score === 0) score = 20
 
-  // If still 0 - no signals but also no rejection - show as Possible
-  if (score === 0) score = 15
+  // +5 salary shown (legitimate employers usually show salary)
+  if (job.salary_min || job.salary_max) { score += 5; signals.push({ type: "salary", label: "Salary shown" }) }
 
-  return Math.min(100, score)
-}
+  // Fresher check
+  for (const kw of FRESHER_KW) { if (text.includes(kw)) { fresherFriendly = true; break } }
 
-function buildJob(job, sponsor) {
-  const score = scoreJob(job, sponsor)
-  if (score === 0) return null
-
-  const raw  = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")
-  const text = (job.title + " " + raw + " " + (job.employer||"")).toLowerCase()
-
-  const sigs = []
-  if (sponsor) {
-    sigs.push({ t:"v", label:"Gov Verified" })
-    if (sponsor.rating === "A") sigs.push({ t:"v", label:"A-Rated" })
-  }
-  for (const kw of CONFIRM_KW) {
-    if (text.includes(kw)) { sigs.push({ t:"s", label:"Sponsorship Confirmed" }); break }
-  }
-  const weakKW2 = ["visa sponsorship","skilled worker visa","tier 2","ukvi"]
-  for (const kw of weakKW2) {
-    if (text.includes(kw)) { sigs.push({ t:"s", label:"Visa Mentioned" }); break }
-  }
-  if (job.salary_min && job.salary_min > 500) sigs.push({ t:"p", label:"Salary shown" })
-
-  let fresher = false
-  for (const kw of FRESHER_KW) { if (text.includes(kw)) { fresher = true; break } }
-
-  const likelihood =
-    score >= 80 ? "Confirmed" :
-    score >= 60 ? "Very Likely" :
-    score >= 40 ? "Likely" : "Possible"
+  const s = Math.min(100, score)
+  const likelihood = s >= 80 ? "Confirmed" : s >= 60 ? "Very Likely" : s >= 40 ? "Likely" : "Possible"
 
   return {
-    ...job,
-    score,
+    score: s,
     likelihood,
-    signals: [...new Map(sigs.map(s => [s.label, s])).values()].slice(0, 4),
-    fresher,
-    verified: !!sponsor,
-    sponsorInfo: sponsor,
+    signals: [...new Map(signals.map(x => [x.label, x])).values()].slice(0, 4),
+    fresherFriendly,
+    verified: !!sponsorData,
   }
 }
 
-//  API FETCHERS 
-async function fromReed(q, loc, page) {
+async function fetchAdzuna(q, loc, page) {
   try {
-    const kw = q ? q + " visa sponsorship" : "visa sponsorship"
-    const ln = loc || "United Kingdom"
-    const p  = new URLSearchParams({ keywords: kw, locationName: ln, resultsToTake: 40, resultsToSkip: (page-1)*40 })
-    const r  = await fetch("https://uk-visa-jobs-six.vercel.app/api/reed?" + p)
+    const what = q ? q + " visa sponsorship" : "visa sponsorship uk jobs"
+    const where = loc && loc !== "Anywhere in UK" ? loc : "UK"
+    const params = new URLSearchParams({ app_id: ADZUNA_ID, app_key: ADZUNA_KEY, what, where, results_per_page: 40 })
+    const r = await fetch("https://api.adzuna.com/v1/api/jobs/gb/search/" + page + "?" + params)
     if (!r.ok) return []
-    const d = await r.json()
-    return (d.results || []).map(j => ({
-      id: "r_" + j.jobId, src: "Reed",
+    const data = await r.json()
+    return (data.results || []).map(j => ({
+      id: "adzuna_" + j.id, source: "Adzuna",
+      title: j.title || "", employer: (j.company && j.company.display_name) || "Unknown",
+      location: (j.location && j.location.display_name) || "UK",
+      salary_min: j.salary_min, salary_max: j.salary_max,
+      description: j.description || "", url: j.redirect_url || "#",
+      posted: j.created, full_time: j.contract_time === "full_time",
+    }))
+  } catch { return [] }
+}
+
+async function fetchReed(q, loc, page) {
+  try {
+    const keywords = q ? q + " visa sponsorship" : "visa sponsorship"
+    const locationName = loc && loc !== "Anywhere in UK" ? loc : "United Kingdom"
+    const params = new URLSearchParams({ keywords, locationName, resultsToTake: 40, resultsToSkip: (page - 1) * 40 })
+    const r = await fetch("https://uk-visa-jobs-six.vercel.app/api/reed?" + params)
+    if (!r.ok) return []
+    const data = await r.json()
+    return (data.results || []).map(j => ({
+      id: "reed_" + j.jobId, source: "Reed",
       title: j.jobTitle || "", employer: j.employerName || "Unknown",
       location: j.locationName || "",
       salary_min: j.minimumSalary, salary_max: j.maximumSalary,
@@ -289,137 +152,109 @@ async function fromReed(q, loc, page) {
   } catch { return [] }
 }
 
-async function fromAdzuna(q, loc, page) {
-  try {
-    const what = q ? q + " visa sponsorship" : "visa sponsorship uk"
-    const where = loc || "UK"
-    const p = new URLSearchParams({ app_id: ADZUNA_ID, app_key: ADZUNA_KEY, what, where, results_per_page: 40 })
-    const r = await fetch("https://api.adzuna.com/v1/api/jobs/gb/search/" + page + "?" + p)
-    if (!r.ok) return []
-    const d = await r.json()
-    return (d.results || []).map(j => ({
-      id: "a_" + j.id, src: "Adzuna",
-      title: j.title || "",
-      employer: (j.company && j.company.display_name) || "Unknown",
-      location: (j.location && j.location.display_name) || "UK",
-      salary_min: j.salary_min, salary_max: j.salary_max,
-      description: j.description || "", url: j.redirect_url || "#",
-      posted: j.created, full_time: j.contract_time === "full_time",
-    }))
-  } catch { return [] }
-}
-
-//  RESPONSIVE HOOK 
-function useW() {
-  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1200)
-  useEffect(() => {
-    const h = () => setW(window.innerWidth)
-    window.addEventListener("resize", h)
-    return () => window.removeEventListener("resize", h)
-  }, [])
-  return w
-}
-
-//  JOB CARD 
-function Card({ job, saved, onSave, navigate, mob }) {
-  const [open, setOpen] = useState(false)
-
-  const sal = job.salary_min || job.salary_max
-    ? "GBP " + (job.salary_min||0).toLocaleString() + (job.salary_max ? " - " + job.salary_max.toLocaleString() : "+")
+function JobCard({ job, onSave, saved, navigate, mob }) {
+  const [expanded, setExpanded] = useState(false)
+  const salary = job.salary_min || job.salary_max
+    ? `GBP ${(job.salary_min || 0).toLocaleString()}${job.salary_max ? ` - GBP ${job.salary_max.toLocaleString()}` : "+"}`
     : null
-  const posted = (() => {
-    if (!job.posted) return ""
-    const d = new Date(job.posted)
-    return isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day:"numeric", month:"short" })
-  })()
-  const sc  = job.score >= 80 ? "#00D68F" : job.score >= 60 ? "#0057FF" : job.score >= 40 ? "#FF6B35" : "#9CA3B8"
-  const lbl = job.likelihood || (job.verified ? "Confirmed" : job.score >= 60 ? "Very Likely" : job.score >= 40 ? "Likely" : "Possible")
-
-  const sigColor = { v:"#00D68F", s:"#0057FF", p:"#FF6B35" }
+  const posted = job.posted
+    ? new Date(job.posted).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+    : ""
+  const scoreColor = job.score >= 80 ? "#00D68F" : job.score >= 60 ? "#0057FF" : job.score >= 40 ? "#FF6B35" : "#9CA3B8"
+  const scoreLabel = job.likelihood || (job.score >= 80 ? "Confirmed" : job.score >= 60 ? "Very Likely" : job.score >= 40 ? "Likely" : "Possible")
 
   return (
-    <div style={{ background:"#fff", border:"1.5px solid "+(job.verified?"#00D68F35":"#E8EEFF"), borderRadius:16, padding:mob?"14px":"20px 24px", position:"relative", transition:"all 0.2s" }}
-      onMouseEnter={e=>{ if(!mob){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,57,255,0.07)"}}}
-      onMouseLeave={e=>{ if(!mob){e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow="none"}}}>
-
+    <div style={{
+      background: "#fff",
+      border: `1.5px solid ${job.verified ? "#00D68F35" : "#E8EEFF"}`,
+      borderRadius: 16,
+      padding: mob ? "14px" : "20px 24px",
+      transition: "all 0.2s",
+      position: "relative",
+    }}
+      onMouseEnter={e => { if (!mob) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,57,255,0.07)" } }}
+      onMouseLeave={e => { if (!mob) { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none" } }}
+    >
       {job.verified && (
-        <div style={{ position:"absolute",top:0,right:0,background:"linear-gradient(135deg,#00D68F,#00A67E)",color:"#fff",fontSize:9,fontWeight:800,padding:"4px 10px",borderRadius:"0 16px 0 8px",letterSpacing:0.5 }}>
+        <div style={{ position: "absolute", top: 0, right: 0, background: "linear-gradient(135deg, #00D68F, #00A67E)", color: "#fff", fontSize: 9, fontWeight: 800, padding: "4px 10px", borderRadius: "0 16px 0 8px", letterSpacing: 0.5 }}>
           UK GOV VERIFIED
         </div>
       )}
 
-      <div style={{ display:"flex",gap:10,justifyContent:"space-between",alignItems:"flex-start",marginTop:job.verified?8:0 }}>
-        <div style={{ flex:1,minWidth:0 }}>
-          <div style={{ display:"flex",gap:5,marginBottom:6,flexWrap:"wrap" }}>
-            <span style={{ background:job.src==="Reed"?"#e8534215":"#7c4dff15",color:job.src==="Reed"?"#e85342":"#7c4dff",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:700 }}>
-              {job.src}
+      <div style={{ display: "flex", gap: 10, justifyContent: "space-between", alignItems: "flex-start", marginTop: job.verified ? 8 : 0 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 5, marginBottom: 6, flexWrap: "wrap" }}>
+            <span style={{ background: job.source === "Reed" ? "#e8534215" : "#7c4dff15", color: job.source === "Reed" ? "#e85342" : "#7c4dff", borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>
+              {job.source}
             </span>
-            {job.fresher && (
-              <span style={{ background:"#00D68F15",color:"#00D68F",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:700 }}>
+            {job.fresherFriendly && (
+              <span style={{ background: "#00D68F15", color: "#00D68F", borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 700 }}>
                 Fresher Friendly
               </span>
             )}
-            {job.sponsorInfo && job.sponsorInfo.town && (
-              <span style={{ background:"#0057FF08",color:"#0057FF",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:600 }}>
+            {job.sponsorInfo?.town && (
+              <span style={{ background: "#0057FF08", color: "#0057FF", borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 600 }}>
                 {job.sponsorInfo.town}
               </span>
             )}
           </div>
-          <h3 style={{ fontSize:mob?14:15,fontWeight:800,color:"#0A0F1E",margin:"0 0 3px",lineHeight:1.3 }}>{job.title}</h3>
-          <div style={{ color:"#4B5675",fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>
+          <h3 style={{ fontSize: mob ? 14 : 15, fontWeight: 800, color: "#0A0F1E", margin: "0 0 3px", lineHeight: 1.3 }}>
+            {job.title}
+          </h3>
+          <div style={{ color: "#4B5675", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {job.employer} - {job.location}
           </div>
         </div>
-        <div style={{ display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0 }}>
-          <div style={{ background:sc+"15",border:"1px solid "+sc+"40",borderRadius:20,padding:"3px 8px",fontSize:10,fontWeight:700,color:sc,whiteSpace:"nowrap" }}>
-            {lbl} {job.score}%
+
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
+          <div style={{ background: `${scoreColor}15`, border: `1px solid ${scoreColor}40`, borderRadius: 20, padding: "3px 8px", fontSize: 10, fontWeight: 700, color: scoreColor, whiteSpace: "nowrap" }}>
+            {scoreLabel} {job.score}%
           </div>
-          <button onClick={()=>onSave(job)}
-            style={{ background:saved?"#0057FF10":"none",border:"1px solid "+(saved?"#0057FF":"#E8EEFF"),color:saved?"#0057FF":"#9CA3B8",borderRadius:6,padding:"3px 8px",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}>
-            {saved?"Saved":"Save"}
+          <button onClick={() => onSave(job)} style={{ background: saved ? "#0057FF10" : "none", border: `1px solid ${saved ? "#0057FF" : "#E8EEFF"}`, color: saved ? "#0057FF" : "#9CA3B8", borderRadius: 6, padding: "3px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+            {saved ? "Saved" : "Save"}
           </button>
         </div>
       </div>
 
-      <div style={{ display:"flex",gap:10,marginTop:7,fontSize:11,color:"#4B5675",flexWrap:"wrap" }}>
-        {sal && <span>{sal}</span>}
+      <div style={{ display: "flex", gap: 10, marginTop: 7, fontSize: 11, color: "#4B5675", flexWrap: "wrap" }}>
+        {salary && <span>{salary}</span>}
         {posted && <span>Posted {posted}</span>}
-        {job.sponsorInfo && job.sponsorInfo.route && <span style={{ color:"#7C3AED",fontWeight:600 }}>{job.sponsorInfo.route.split(":")[0]}</span>}
+        {job.sponsorInfo?.route && <span>{job.sponsorInfo.route.split(":")[0]}</span>}
       </div>
 
-      {job.signals && job.signals.length > 0 && (
-        <div style={{ display:"flex",flexWrap:"wrap",gap:4,marginTop:6 }}>
-          {job.signals.map((s,i) => (
-            <span key={i} style={{ background:(sigColor[s.t]||"#888")+"12",color:sigColor[s.t]||"#888",borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:600 }}>
-              {s.label}
-            </span>
-          ))}
+      {job.signals?.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+          {job.signals.map((s, i) => {
+            const cols = { verified: "#00D68F", rating: "#00D68F", visa: "#0057FF", salary: "#FF6B35" }
+            return (
+              <span key={i} style={{ background: `${cols[s.type] || "#888"}12`, color: cols[s.type] || "#888", borderRadius: 4, padding: "2px 6px", fontSize: 10, fontWeight: 600 }}>
+                {s.label}
+              </span>
+            )
+          })}
         </div>
       )}
 
       {job.description && (
         <>
-          <button onClick={()=>setOpen(o=>!o)}
-            style={{ background:"none",border:"none",color:"#0057FF",fontSize:11,cursor:"pointer",marginTop:6,padding:0,fontFamily:"inherit" }}>
-            {open?"Hide description":"Show description"}
+          <button onClick={() => setExpanded(e => !e)} style={{ background: "none", border: "none", color: "#0057FF", fontSize: 11, cursor: "pointer", marginTop: 6, padding: 0, fontFamily: "inherit" }}>
+            {expanded ? "Hide description" : "Show description"}
           </button>
-          {open && (
-            <p style={{ margin:"8px 0 0",fontSize:12,color:"#4B5675",lineHeight:1.7,borderTop:"1px solid #E8EEFF",paddingTop:8,maxHeight:150,overflow:"auto" }}>
-              {job.description.replace(/<[^>]*>/g,"").slice(0,500)}
-              {job.description.length>500?"...":""}
+          {expanded && (
+            <p style={{ margin: "8px 0 0", fontSize: 12, color: "#4B5675", lineHeight: 1.7, borderTop: "1px solid #E8EEFF", paddingTop: 8, maxHeight: 150, overflow: "auto" }}>
+              {job.description.replace(/<[^>]*>/g, "").slice(0, 500)}
+              {job.description.length > 500 ? "..." : ""}
             </p>
           )}
         </>
       )}
 
-      <div style={{ display:"flex",gap:8,marginTop:10,flexWrap:"wrap" }}>
-        <a href={job.url} target="_blank" rel="noopener noreferrer"
-          style={{ flex:1,background:"linear-gradient(135deg,#0057FF,#00C2FF)",color:"#fff",borderRadius:8,padding:"9px 14px",fontSize:12,fontWeight:700,textDecoration:"none",textAlign:"center" }}>
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+        <a href={job.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", borderRadius: 8, padding: "9px 14px", fontSize: 12, fontWeight: 700, textDecoration: "none", textAlign: "center", minWidth: 80 }}>
           Apply Now
         </a>
         {job.sponsorInfo && (
-          <button onClick={()=>navigate("/employer/"+encodeURIComponent(job.employer))}
-            style={{ background:"#F0F5FF",border:"1px solid #0057FF20",color:"#0057FF",borderRadius:8,padding:"9px 12px",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
+          <button onClick={() => navigate("/employer/" + encodeURIComponent(job.employer))} style={{ background: "#F0F5FF", border: "1px solid #0057FF20", color: "#0057FF", borderRadius: 8, padding: "9px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             Profile
           </button>
         )}
@@ -428,293 +263,335 @@ function Card({ job, saved, onSave, navigate, mob }) {
   )
 }
 
-//  PAGINATION 
-function Pages({ cur, total, go, mob }) {
-  if (total <= 1) return null
-  const list = []
-  const d = mob ? 1 : 2
-  const l = Math.max(2, cur - d)
-  const r = Math.min(total - 1, cur + d)
-  list.push(1)
-  if (l > 2) list.push("...")
-  for (let i = l; i <= r; i++) list.push(i)
-  if (r < total - 1) list.push("...")
-  if (total > 1) list.push(total)
-
-  const btn = (label, page, active, disabled) => (
-    <button key={label+""+page} onClick={()=>!disabled&&go(page)} disabled={disabled}
-      style={{ padding:"8px 13px",borderRadius:9,fontSize:13,fontWeight:active?800:600,cursor:disabled?"not-allowed":"pointer",border:"1.5px solid "+(active?"#0057FF":"#E8EEFF"),background:active?"#0057FF":"#fff",color:active?"#fff":disabled?"#9CA3B8":"#4B5675",fontFamily:"inherit",minWidth:38 }}>
-      {label}
-    </button>
-  )
-
-  return (
-    <div style={{ marginTop:28,display:"flex",flexDirection:"column",alignItems:"center",gap:12 }}>
-      <div style={{ fontSize:13,color:"#4B5675" }}>Page {cur} of {total}</div>
-      <div style={{ display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center" }}>
-        {btn("Prev", cur-1, false, cur===1)}
-        {list.map((p,i) => p==="..." ? (
-          <span key={"e"+i} style={{ padding:"8px 4px",color:"#9CA3B8",fontSize:13 }}>...</span>
-        ) : btn(p, p, p===cur, false))}
-        {btn("Next", cur+1, false, cur===total)}
-      </div>
-    </div>
-  )
-}
-
-//  MAIN PAGE 
 export default function JobsPage() {
-  const [sp]  = useSearchParams()
-  const [q,   setQ]   = useState(sp.get("q") || "")
-  const [loc, setLoc] = useState(sp.get("loc") || "")
+  const [searchParams] = useSearchParams()
+  const [q, setQ] = useState(searchParams.get("q") || "")
+  const [loc, setLoc] = useState(searchParams.get("loc") || "")
   const [showQ, setShowQ] = useState(false)
   const [showL, setShowL] = useState(false)
+  const [showFilters, setShowFilters] = useState(false)
   const [fresherOnly, setFresherOnly] = useState(false)
   const [verifiedOnly, setVerifiedOnly] = useState(false)
-  const [sortBy, setSortBy] = useState("score")
+  const [filters, setFilters] = useState({ salaryMin: "", salaryMax: "", jobType: "", source: "", sortBy: "Score" })
   const [allJobs, setAllJobs] = useState([])
   const [loading, setLoading] = useState(false)
-  const [error,   setError]   = useState("")
+  const [error, setError] = useState("")
   const [searched, setSearched] = useState(false)
-  const [page, setPage] = useState(1)
-  const [saved, setSaved] = useState(new Set())
-  const topRef  = useRef(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [savedJobs, setSavedJobs] = useState(new Set())
+  const topRef = useRef(null)
   const navigate = useNavigate()
-  const w   = useW()
+  const w = useW()
   const mob = w < 768
 
-  const allRoles = ["All Jobs", ...ALL_JOBS]
-  const allLocs  = ["Anywhere in UK", ...ALL_LOCATIONS]
-  const filteredRoles = q ? allRoles.filter(r => r.toLowerCase().includes(q.toLowerCase())) : allRoles
-  const filteredLocs  = loc ? allLocs.filter(l => l.toLowerCase().includes(loc.toLowerCase())) : allLocs
+  const activeCount = Object.values(filters).filter(v => v !== "" && v !== "Score").length
+  const filteredRoles = q.length > 0 ? ALL_ROLES.filter(r => r.toLowerCase().includes(q.toLowerCase())) : ALL_ROLES
+  const filteredLocs = loc.length > 0 ? ALL_LOCS.filter(l => l.toLowerCase().includes(loc.toLowerCase())) : ALL_LOCS
+  const JOBS_PER_PAGE = 20
+  const totalPages = Math.max(1, Math.ceil(allJobs.length / JOBS_PER_PAGE))
+  const jobs = allJobs.slice((currentPage - 1) * JOBS_PER_PAGE, currentPage * JOBS_PER_PAGE)
 
-  const displayed = (() => {
-    let j = [...allJobs]
-    if (fresherOnly)  j = j.filter(x => x.fresher)
-    if (verifiedOnly) j = j.filter(x => x.verified)
-    if (sortBy === "salary") j.sort((a,b) => (b.salary_min||0)-(a.salary_min||0))
-    else if (sortBy === "date") j.sort((a,b) => new Date(b.posted||0)-new Date(a.posted||0))
-    else j.sort((a,b) => { if(a.verified&&!b.verified)return -1;if(!a.verified&&b.verified)return 1;return b.score-a.score })
-    return j
-  })()
-  const totalPages = Math.max(1, Math.ceil(displayed.length / PER_PAGE))
-  const pageJobs   = displayed.slice((page-1)*PER_PAGE, page*PER_PAGE)
+  const goPage = (p) => { setCurrentPage(p); if (topRef.current) topRef.current.scrollIntoView({ behavior: "smooth" }) }
 
-  const goPage = p => { setPage(p); if(topRef.current) topRef.current.scrollIntoView({ behavior:"smooth" }) }
+  // Load all jobs on mount
+  useEffect(() => { doSearch(1, "", "") }, [])
 
-  useEffect(() => { runSearch("","") }, [])
+  const setFilter = (k, v) => setFilters(f => ({ ...f, [k]: f[k] === v ? "" : v }))
 
-  const runSearch = async (searchQ, searchLoc) => {
-    setLoading(true); setError(""); setPage(1)
-    try {
-      const loc2 = searchLoc && searchLoc !== "Anywhere in UK" ? searchLoc : ""
-
-      // Fetch 3 pages from each source in parallel
-      const results = await Promise.allSettled([
-        fromReed(searchQ, loc2, 1),   fromAdzuna(searchQ, loc2, 1),
-        fromReed(searchQ, loc2, 2),   fromAdzuna(searchQ, loc2, 2),
-        fromReed(searchQ, loc2, 3),   fromAdzuna(searchQ, loc2, 3),
-      ])
-      let raw = []
-      for (const r of results) { if (r.status === "fulfilled") raw.push(...r.value) }
-
-      if (raw.length === 0) { setError("No results found. Try a different search."); setLoading(false); return }
-
-      // Deduplicate
-      const seen = new Set()
-      raw = raw.filter(j => {
-        const k = j.title.toLowerCase().slice(0,30) + "|" + j.employer.toLowerCase()
-        if (seen.has(k)) return false
-        seen.add(k); return true
-      })
-
-      // Check every employer against the Home Office register
-      const sponsorMap = await batchCheck(raw.map(j => j.employer))
-
-      // Score every job - buildJob returns null for hard rejections
-      const confirmed = raw
-        .map(j => buildJob(j, sponsorMap[j.employer]))
-        .filter(Boolean)
-
-      setAllJobs(confirmed)
-      setSearched(true)
-    } catch (e) {
-      setError("Search failed. Please try again.")
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSave = async job => {
-    const { data:{ user } } = await supabase.auth.getUser()
+  const handleSave = async (job) => {
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) { navigate("/auth"); return }
-    if (saved.has(job.id)) return
+    if (savedJobs.has(job.id)) return
     await supabase.from("saved_jobs").insert({
       user_id: user.id, job_id: job.id, job_title: job.title,
       employer: job.employer, location: job.location,
       salary_min: job.salary_min, salary_max: job.salary_max,
-      job_url: job.url, source: job.src, sponsorship_score: job.score,
+      job_url: job.url, source: job.source, sponsorship_score: job.score,
     })
-    setSaved(s => new Set([...s, job.id]))
+    setSavedJobs(s => new Set([...s, job.id]))
   }
 
-  const drop = {
-    position:"absolute",top:"calc(100% + 4px)",left:0,right:0,
-    background:"#fff",borderRadius:14,border:"1px solid #E8EEFF",
-    boxShadow:"0 16px 48px rgba(0,57,255,0.1)",maxHeight:360,overflowY:"auto",zIndex:300,
-  }
-  const pill = active => ({
-    padding:"5px 11px",borderRadius:100,fontSize:mob?11:12,fontWeight:600,
-    cursor:"pointer",border:"1.5px solid "+(active?"#0057FF":"#E8EEFF"),
-    background:active?"#0057FF0D":"#fff",color:active?"#0057FF":"#4B5675",
-    fontFamily:"inherit",whiteSpace:"nowrap",
+  const doSearch = useCallback(async (p, searchQ, searchLoc) => {
+    setLoading(true); setError(""); setCurrentPage(1)
+    try {
+      const cleanLoc = searchLoc && searchLoc !== "Anywhere in UK" ? searchLoc : ""
+
+      // Fetch 3 pages from each source simultaneously for maximum results
+      const fetches = await Promise.allSettled([
+        fetchReed(searchQ, cleanLoc, 1),   fetchAdzuna(searchQ, cleanLoc, 1),
+        fetchReed(searchQ, cleanLoc, 2),   fetchAdzuna(searchQ, cleanLoc, 2),
+        fetchReed(searchQ, cleanLoc, 3),   fetchAdzuna(searchQ, cleanLoc, 3),
+      ])
+      let rawJobs = []
+      for (const r of fetches) { if (r.status === "fulfilled") rawJobs.push(...r.value) }
+
+      if (rawJobs.length === 0) {
+        setError("No results found. Try a different search.")
+        setLoading(false)
+        return
+      }
+
+      // Deduplicate by title + employer
+      const seen = new Set()
+      rawJobs = rawJobs.filter(j => {
+        const key = j.title.toLowerCase().slice(0, 30) + "|" + j.employer.toLowerCase()
+        if (seen.has(key)) return false
+        seen.add(key); return true
+      })
+
+      // Verify every employer against the Home Office sponsor register
+      const sponsorMap = await batchCheckSponsors(rawJobs.map(j => j.employer))
+
+      // Score all jobs with likelihood tiers - score 0 = filtered out
+      let scored = rawJobs.map(j => {
+        const sponsorInfo = sponsorMap[j.employer]
+        const { score, likelihood, signals, fresherFriendly, verified } = scoreJob(j, sponsorInfo)
+        return { ...j, score, likelihood, signals, fresherFriendly, verified, sponsorInfo }
+      }).filter(j => j.score > 0)
+
+      // Apply user filters
+      if (fresherOnly) scored = scored.filter(j => j.fresherFriendly)
+      if (verifiedOnly) scored = scored.filter(j => j.verified)
+      if (filters.jobType === "Full-time") scored = scored.filter(j => j.full_time === true)
+      if (filters.jobType === "Part-time") scored = scored.filter(j => j.full_time === false)
+      if (filters.salaryMin) scored = scored.filter(j => (j.salary_min || 0) >= parseInt(filters.salaryMin))
+      if (filters.salaryMax) scored = scored.filter(j => (j.salary_max || 999999) <= parseInt(filters.salaryMax))
+      if (filters.source === "Reed") scored = scored.filter(j => j.source === "Reed")
+      if (filters.source === "Adzuna") scored = scored.filter(j => j.source === "Adzuna")
+
+      // Sort - verified + high score first
+      scored.sort((a, b) => {
+        if (a.verified && !b.verified) return -1
+        if (!a.verified && b.verified) return 1
+        if (filters.sortBy === "Salary") return (b.salary_min || 0) - (a.salary_min || 0)
+        if (filters.sortBy === "Date") return new Date(b.posted || 0) - new Date(a.posted || 0)
+        return b.score - a.score
+      })
+
+      setAllJobs(scored)
+      setSearched(true)
+    } catch (err) {
+      setError("Search failed. Please try again.")
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }, [fresherOnly, verifiedOnly, filters])
+
+  const pillStyle = (active) => ({
+    padding: "5px 11px", borderRadius: 100, fontSize: mob ? 11 : 12, fontWeight: 600,
+    cursor: "pointer", border: `1.5px solid ${active ? "#0057FF" : "#E8EEFF"}`,
+    background: active ? "#0057FF0D" : "#fff", color: active ? "#0057FF" : "#4B5675",
+    transition: "all 0.15s", fontFamily: "inherit", whiteSpace: "nowrap",
   })
 
+  const filterPillStyle = (active) => ({
+    padding: "6px 12px", borderRadius: 100, fontSize: 12, fontWeight: 600,
+    cursor: "pointer", border: `1.5px solid ${active ? "#0057FF" : "#E8EEFF"}`,
+    background: active ? "#0057FF0D" : "#F8FAFF", color: active ? "#0057FF" : "#4B5675",
+    transition: "all 0.15s", fontFamily: "inherit",
+  })
+
+  const dropStyle = {
+    position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+    background: "#fff", borderRadius: 14, border: "1px solid #E8EEFF",
+    boxShadow: "0 16px 48px rgba(0,57,255,0.1)",
+    maxHeight: 360, overflowY: "auto", zIndex: 300,
+  }
+
   const stats = {
-    total: displayed.length,
-    verified: displayed.filter(j=>j.verified).length,
-    fresher: displayed.filter(j=>j.fresher).length,
+    total: allJobs.length,
+    verified: allJobs.filter(j => j.verified).length,
+    fresher: allJobs.filter(j => j.fresherFriendly).length,
   }
 
   return (
-    <div style={{ minHeight:"100vh",background:"#F8FAFF",fontFamily:"inherit" }}>
+    <div style={{ minHeight: "100vh", background: "#F8FAFF", fontFamily: "inherit" }}>
       <Nav />
-      <div ref={topRef} style={{ maxWidth:900,margin:"0 auto",padding:mob?"82px 4% 40px":"96px 5% 60px" }}>
+      <div ref={topRef} style={{ maxWidth: 900, margin: "0 auto", padding: mob ? "82px 4% 40px" : "96px 5% 60px" }}>
 
-        {/* Header */}
-        <div style={{ marginBottom:mob?14:20 }}>
-          <h1 style={{ fontSize:mob?20:26,fontWeight:900,color:"#0A0F1E",margin:"0 0 4px",letterSpacing:-0.8 }}>
+        {/* Page header */}
+        <div style={{ marginBottom: mob ? 14 : 20 }}>
+          <h1 style={{ fontSize: mob ? 20 : 26, fontWeight: 900, color: "#0A0F1E", margin: "0 0 4px", letterSpacing: -0.8 }}>
             Find UK Visa Sponsored Jobs
           </h1>
-          <p style={{ color:"#4B5675",fontSize:mob?12:14,margin:0 }}>
-            Every result verified against 125,284 UK Home Office sponsors - Only confirmed sponsorship shown
+          <p style={{ color: "#4B5675", fontSize: mob ? 12 : 14, margin: 0 }}>
+            125,284 verified UK Home Office licensed sponsors - Verified results shown first
           </p>
         </div>
 
         {/* Search box */}
-        <div style={{ background:"#fff",border:"1.5px solid #E8EEFF",borderRadius:16,marginBottom:10,boxShadow:"0 4px 24px rgba(0,57,255,0.06)",position:"relative",zIndex:20 }}>
+        <div style={{ background: "#fff", border: "1.5px solid #E8EEFF", borderRadius: 16, marginBottom: 10, boxShadow: "0 4px 24px rgba(0,57,255,0.06)", position: "relative", zIndex: 20 }}>
 
-          {/* Role input */}
-          <div style={{ position:"relative",borderBottom:"1px solid #E8EEFF" }}>
-            <span style={{ position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:"#9CA3B8",fontSize:13,pointerEvents:"none",fontWeight:500 }}>Role:</span>
-            <input value={q} onChange={e=>setQ(e.target.value)}
-              onFocus={()=>{ setShowQ(true); setShowL(false) }}
-              onBlur={()=>setTimeout(()=>setShowQ(false),200)}
-              onKeyDown={e=>{ if(e.key==="Enter"){ runSearch(q,loc); setShowQ(false) }}}
-              placeholder="Search any role - or leave empty to see all sponsored jobs"
-              style={{ width:"100%",border:"none",outline:"none",background:"transparent",padding:mob?"14px 80px 14px 60px":"14px 90px 14px 62px",fontSize:mob?14:15,color:"#0A0F1E",fontFamily:"inherit" }}
+          {/* Job role search */}
+          <div style={{ position: "relative", borderBottom: "1px solid #E8EEFF" }}>
+            <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "#9CA3B8", fontSize: 14, pointerEvents: "none" }}>Search</span>
+            <input
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              onFocus={() => { setShowQ(true); setShowL(false) }}
+              onBlur={() => setTimeout(() => setShowQ(false), 200)}
+              onKeyDown={e => { if (e.key === "Enter") { doSearch(1, q, loc); setShowQ(false) } }}
+              placeholder="Job title or keyword - or leave empty to see all jobs"
+              style={{ width: "100%", border: "none", outline: "none", background: "transparent", padding: mob ? "14px 80px 14px 70px" : "14px 90px 14px 72px", fontSize: mob ? 14 : 15, color: "#0A0F1E", fontFamily: "inherit" }}
             />
             {q && (
-              <button onClick={()=>{ setQ(""); runSearch("",loc) }}
-                style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"#F8FAFF",border:"1px solid #E8EEFF",borderRadius:6,padding:"4px 10px",fontSize:12,color:"#4B5675",cursor:"pointer",fontFamily:"inherit" }}>
+              <button onClick={() => { setQ(""); doSearch(1, "", loc); setShowQ(false) }} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "#F8FAFF", border: "1px solid #E8EEFF", borderRadius: 6, padding: "4px 10px", fontSize: 12, color: "#4B5675", cursor: "pointer", fontFamily: "inherit" }}>
                 Clear
               </button>
             )}
             {showQ && (
-              <div style={drop}>
-                <div style={{ padding:"8px 14px 6px",fontSize:10,fontWeight:700,color:"#9CA3B8",textTransform:"uppercase",letterSpacing:0.8,position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #F8FAFF" }}>
-                  {q ? filteredRoles.length+" matching roles" : "All "+ALL_JOBS.length+" roles"}
+              <div style={dropStyle}>
+                <div style={{ padding: "10px 14px 8px", fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #F8FAFF" }}>
+                  {q ? `${filteredRoles.length} matching roles` : `All ${ALL_ROLES.length - 1} roles`}
                 </div>
                 {filteredRoles.map(role => (
                   <div key={role}
-                    onMouseDown={()=>{ setQ(role==="All Jobs"?"":role); runSearch(role==="All Jobs"?"":role,loc); setShowQ(false) }}
-                    style={{ padding:"10px 16px",cursor:"pointer",fontSize:14,color:role==="All Jobs"?"#0057FF":"#0A0F1E",fontWeight:role==="All Jobs"?700:400,background:role==="All Jobs"?"#F0F5FF":"transparent",borderBottom:"1px solid rgba(232,238,255,0.4)" }}
-                    onMouseEnter={e=>e.currentTarget.style.background="#F8FAFF"}
-                    onMouseLeave={e=>e.currentTarget.style.background=role==="All Jobs"?"#F0F5FF":"transparent"}
-                  >{role}</div>
+                    onMouseDown={() => { setQ(role === "All Jobs" ? "" : role); doSearch(1, role === "All Jobs" ? "" : role, loc); setShowQ(false) }}
+                    style={{ padding: "10px 16px", cursor: "pointer", fontSize: 14, color: role === "All Jobs" ? "#0057FF" : "#0A0F1E", fontWeight: role === "All Jobs" ? 700 : 400, background: role === "All Jobs" ? "#F0F5FF" : "transparent", borderBottom: "1px solid rgba(232,238,255,0.4)" }}
+                    onMouseEnter={e => e.currentTarget.style.background = role === "All Jobs" ? "#E8F0FF" : "#F8FAFF"}
+                    onMouseLeave={e => e.currentTarget.style.background = role === "All Jobs" ? "#F0F5FF" : "transparent"}
+                  >
+                    {role === "All Jobs" ? "*  " : ""}{role}
+                  </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Location + buttons */}
-          <div style={{ display:"flex",alignItems:"center" }}>
-            <div style={{ flex:1,position:"relative" }}>
-              <span style={{ position:"absolute",left:13,top:"50%",transform:"translateY(-50%)",color:"#9CA3B8",fontSize:12,pointerEvents:"none",fontWeight:500 }}>Location:</span>
-              <input value={loc} onChange={e=>setLoc(e.target.value)}
-                onFocus={()=>{ setShowL(true); setShowQ(false) }}
-                onBlur={()=>setTimeout(()=>setShowL(false),200)}
-                onKeyDown={e=>{ if(e.key==="Enter"){ runSearch(q,loc); setShowL(false) }}}
-                placeholder="Any UK city..."
-                style={{ width:"100%",border:"none",outline:"none",background:"transparent",padding:"12px 12px 12px 82px",fontSize:13,color:"#0A0F1E",fontFamily:"inherit" }}
+          {/* Location + filters + search button */}
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <div style={{ flex: 1, position: "relative" }}>
+              <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "#9CA3B8", fontSize: 12, pointerEvents: "none" }}>Location</span>
+              <input
+                value={loc}
+                onChange={e => setLoc(e.target.value)}
+                onFocus={() => { setShowL(true); setShowQ(false) }}
+                onBlur={() => setTimeout(() => setShowL(false), 200)}
+                onKeyDown={e => { if (e.key === "Enter") { doSearch(1, q, loc); setShowL(false) } }}
+                placeholder="Any UK city or remote..."
+                style={{ width: "100%", border: "none", outline: "none", background: "transparent", padding: "12px 12px 12px 72px", fontSize: 13, color: "#0A0F1E", fontFamily: "inherit" }}
               />
               {showL && (
-                <div style={drop}>
-                  <div style={{ padding:"8px 14px 6px",fontSize:10,fontWeight:700,color:"#9CA3B8",textTransform:"uppercase",letterSpacing:0.8,position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #F8FAFF" }}>
-                    {loc ? filteredLocs.length+" locations" : "All "+ALL_LOCATIONS.length+" UK cities"}
+                <div style={dropStyle}>
+                  <div style={{ padding: "10px 14px 8px", fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #F8FAFF" }}>
+                    {loc ? `${filteredLocs.length} locations` : `All ${ALL_LOCS.length - 1} UK cities`}
                   </div>
                   {filteredLocs.map(city => (
                     <div key={city}
-                      onMouseDown={()=>{ setLoc(city==="Anywhere in UK"?"":city); runSearch(q,city==="Anywhere in UK"?"":city); setShowL(false) }}
-                      style={{ padding:"10px 16px",cursor:"pointer",fontSize:14,color:city==="Anywhere in UK"?"#0057FF":"#0A0F1E",fontWeight:city==="Anywhere in UK"?700:400,background:city==="Anywhere in UK"?"#F0F5FF":"transparent",borderBottom:"1px solid rgba(232,238,255,0.4)" }}
-                      onMouseEnter={e=>e.currentTarget.style.background="#F8FAFF"}
-                      onMouseLeave={e=>e.currentTarget.style.background=city==="Anywhere in UK"?"#F0F5FF":"transparent"}
-                    >{city}</div>
+                      onMouseDown={() => { setLoc(city === "Anywhere in UK" ? "" : city); doSearch(1, q, city === "Anywhere in UK" ? "" : city); setShowL(false) }}
+                      style={{ padding: "10px 16px", cursor: "pointer", fontSize: 14, color: city === "Anywhere in UK" ? "#0057FF" : "#0A0F1E", fontWeight: city === "Anywhere in UK" ? 700 : 400, background: city === "Anywhere in UK" ? "#F0F5FF" : "transparent", borderBottom: "1px solid rgba(232,238,255,0.4)" }}
+                      onMouseEnter={e => e.currentTarget.style.background = city === "Anywhere in UK" ? "#E8F0FF" : "#F8FAFF"}
+                      onMouseLeave={e => e.currentTarget.style.background = city === "Anywhere in UK" ? "#F0F5FF" : "transparent"}
+                    >
+                      {city === "Anywhere in UK" ? "*  " : ""}{city}
+                    </div>
                   ))}
                 </div>
               )}
             </div>
-            <div style={{ width:1,height:32,background:"#E8EEFF",flexShrink:0 }} />
-            <button onClick={()=>{ runSearch(q,loc); setShowQ(false); setShowL(false) }} disabled={loading}
-              style={{ background:"linear-gradient(135deg,#0057FF,#00C2FF)",color:"#fff",border:"none",borderRadius:"0 0 14px 0",padding:mob?"12px 14px":"12px 22px",fontSize:mob?13:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",height:44,whiteSpace:"nowrap" }}>
-              {loading?"Searching...":"Search"}
+
+            <div style={{ width: 1, height: 32, background: "#E8EEFF", flexShrink: 0 }} />
+
+            <button onClick={() => setShowFilters(f => !f)} style={{ background: "none", border: "none", color: showFilters ? "#0057FF" : "#4B5675", padding: "0 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 4, height: 44, whiteSpace: "nowrap" }}>
+              Filters {activeCount > 0 && (
+                <span style={{ background: "#0057FF", color: "#fff", borderRadius: "50%", width: 16, height: 16, fontSize: 9, fontWeight: 800, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+                  {activeCount}
+                </span>
+              )}
+            </button>
+
+            <button onClick={() => { doSearch(1, q, loc); setShowQ(false); setShowL(false) }} disabled={loading} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: "0 0 14px 0", padding: mob ? "12px 14px" : "12px 22px", fontSize: mob ? 13 : 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", height: 44, whiteSpace: "nowrap" }}>
+              Search
             </button>
           </div>
         </div>
 
         {/* Quick role pills */}
-        <div style={{ display:"flex",gap:6,flexWrap:"wrap",marginBottom:10 }}>
-          {QUICK.map(role => (
-            <button key={role}
-              onClick={()=>{ const v=role==="All Jobs"?"":role; setQ(v); runSearch(v,loc) }}
-              style={pill((role==="All Jobs"&&!q)||q===role)}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+          {QUICK_ROLES.map(role => (
+            <button key={role} onClick={() => { const v = role === "All Jobs" ? "" : role; setQ(v); doSearch(1, v, loc) }} style={pillStyle((role === "All Jobs" && !q) || q === role)}>
               {role}
             </button>
           ))}
         </div>
 
-        {/* Toggles + sort */}
-        <div style={{ display:"flex",gap:16,marginBottom:10,flexWrap:"wrap",alignItems:"center" }}>
+        {/* Toggle switches */}
+        <div style={{ display: "flex", gap: 16, marginBottom: 10, flexWrap: "wrap" }}>
           {[
-            { label:"Fresher friendly", val:fresherOnly, set:()=>setFresherOnly(v=>!v), color:"#FF6B35" },
-            { label:"Verified only",    val:verifiedOnly,set:()=>setVerifiedOnly(v=>!v),color:"#00D68F" },
+            { label: "Fresher friendly only", val: fresherOnly, set: () => { setFresherOnly(v => !v); setTimeout(() => doSearch(1, q, loc), 50) }, color: "#FF6B35" },
+            { label: "Verified sponsors only", val: verifiedOnly, set: () => { setVerifiedOnly(v => !v); setTimeout(() => doSearch(1, q, loc), 50) }, color: "#00D68F" },
           ].map(t => (
-            <div key={t.label} onClick={t.set} style={{ display:"flex",alignItems:"center",gap:6,cursor:"pointer" }}>
-              <div style={{ width:32,height:18,borderRadius:9,background:t.val?t.color:"#E8EEFF",position:"relative",transition:"background 0.2s",flexShrink:0 }}>
-                <div style={{ position:"absolute",top:2,left:t.val?15:2,width:14,height:14,borderRadius:"50%",background:"#fff",transition:"left 0.2s" }} />
+            <div key={t.label} onClick={t.set} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+              <div style={{ width: 32, height: 18, borderRadius: 9, background: t.val ? t.color : "#E8EEFF", position: "relative", transition: "background 0.2s", flexShrink: 0 }}>
+                <div style={{ position: "absolute", top: 2, left: t.val ? 15 : 2, width: 14, height: 14, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
               </div>
-              <span style={{ fontSize:12,color:t.val?t.color:"#4B5675",fontWeight:600 }}>{t.label}</span>
+              <span style={{ fontSize: 12, color: t.val ? t.color : "#4B5675", fontWeight: 600 }}>{t.label}</span>
             </div>
           ))}
-          <div style={{ marginLeft:"auto",display:"flex",gap:6 }}>
-            {[["score","Best Match"],["date","Newest"],["salary","Salary"]].map(([v,l]) => (
-              <button key={v} onClick={()=>setSortBy(v)}
-                style={{ padding:"5px 10px",borderRadius:8,fontSize:11,fontWeight:600,cursor:"pointer",border:"1.5px solid "+(sortBy===v?"#0057FF":"#E8EEFF"),background:sortBy===v?"#0057FF0D":"#fff",color:sortBy===v?"#0057FF":"#4B5675",fontFamily:"inherit" }}>
-                {l}
-              </button>
-            ))}
-          </div>
         </div>
 
-        {/* Error */}
+        {/* Filters panel */}
+        {showFilters && (
+          <div style={{ background: "#fff", border: "1.5px solid #E8EEFF", borderRadius: 14, padding: mob ? "14px" : "18px 22px", marginBottom: 12 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Contract Type</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {["Full-time", "Part-time", "Contract"].map(v => (
+                    <button key={v} onClick={() => setFilter("jobType", v)} style={filterPillStyle(filters.jobType === v)}>{v}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Sort By</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {["Score", "Date", "Salary"].map(v => (
+                    <button key={v} onClick={() => setFilter("sortBy", v)} style={filterPillStyle(filters.sortBy === v)}>{v}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 }}>Source</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {["Reed", "Adzuna"].map(v => (
+                    <button key={v} onClick={() => setFilter("source", v)} style={filterPillStyle(filters.source === v)}>{v}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: "#9CA3B8", whiteSpace: "nowrap" }}>Salary GBP </span>
+              <input value={filters.salaryMin} onChange={e => setFilter("salaryMin", e.target.value)} placeholder="Min e.g. 25000" type="number" style={{ flex: 1, border: "1.5px solid #E8EEFF", borderRadius: 8, padding: "8px 10px", fontSize: 12, color: "#0A0F1E", background: "#F8FAFF", fontFamily: "inherit", outline: "none" }} onFocus={e => e.target.style.borderColor = "#0057FF"} onBlur={e => e.target.style.borderColor = "#E8EEFF"} />
+              <span style={{ color: "#9CA3B8", fontSize: 12 }}>to</span>
+              <input value={filters.salaryMax} onChange={e => setFilter("salaryMax", e.target.value)} placeholder="Max e.g. 80000" type="number" style={{ flex: 1, border: "1.5px solid #E8EEFF", borderRadius: 8, padding: "8px 10px", fontSize: 12, color: "#0A0F1E", background: "#F8FAFF", fontFamily: "inherit", outline: "none" }} onFocus={e => e.target.style.borderColor = "#0057FF"} onBlur={e => e.target.style.borderColor = "#E8EEFF"} />
+              {activeCount > 0 && (
+                <button onClick={() => setFilters({ salaryMin: "", salaryMax: "", jobType: "", source: "", sortBy: "Score" })} style={{ background: "none", border: "none", color: "#4B5675", fontSize: 11, cursor: "pointer", fontFamily: "inherit", fontWeight: 600, whiteSpace: "nowrap" }}>
+                  Clear all
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Error message */}
         {error && (
-          <div style={{ background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:10,padding:"10px 14px",marginBottom:12,color:"#DC2626",fontSize:13 }}>
+          <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", marginBottom: 12, color: "#DC2626", fontSize: 13 }}>
             {error}
           </div>
         )}
 
-        {/* Stats */}
+        {/* Stats row */}
         {allJobs.length > 0 && (
-          <div style={{ display:"flex",gap:8,flexWrap:"wrap",marginBottom:14 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
             {[
-              { label:"Total Jobs",     value:stats.total,    color:"#0057FF" },
-              { label:"Gov Verified",   value:stats.verified, color:"#00D68F" },
-              { label:"Fresher",        value:stats.fresher,  color:"#FF6B35" },
+              { label: "Results", value: stats.total, color: "#0057FF" },
+              { label: "Gov Verified", value: stats.verified, color: "#00D68F" },
+              { label: "Fresher Friendly", value: stats.fresher, color: "#FF6B35" },
             ].map(s => (
-              <div key={s.label} style={{ background:"#fff",border:"1px solid "+s.color+"20",borderRadius:10,padding:"7px 12px",display:"flex",alignItems:"center",gap:6 }}>
-                <span style={{ fontSize:mob?15:17,fontWeight:900,color:s.color }}>{s.value}</span>
-                <span style={{ fontSize:10,color:"#9CA3B8",fontWeight:600,textTransform:"uppercase" }}>{s.label}</span>
+              <div key={s.label} style={{ background: "#fff", border: `1px solid ${s.color}20`, borderRadius: 10, padding: "7px 12px", display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ fontSize: mob ? 16 : 18, fontWeight: 900, color: s.color }}>{s.value}</span>
+                <span style={{ fontSize: 10, color: "#9CA3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 }}>{s.label}</span>
               </div>
             ))}
           </div>
@@ -722,45 +599,73 @@ export default function JobsPage() {
 
         {/* Loading skeletons */}
         {loading && allJobs.length === 0 && (
-          <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
-            {[...Array(5)].map((_,i) => (
-              <div key={i} style={{ background:"#fff",borderRadius:16,padding:"20px 24px",border:"1px solid #E8EEFF",opacity:1-i*0.15 }}>
-                <div style={{ height:14,background:"#F0F0F0",borderRadius:4,width:(55+i*8)+"%",marginBottom:10 }} />
-                <div style={{ height:11,background:"#F0F0F0",borderRadius:4,width:"35%" }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", border: "1px solid #E8EEFF", opacity: 1 - i * 0.15 }}>
+                <div style={{ height: 14, background: "#F0F0F0", borderRadius: 4, width: `${55 + i * 8}%`, marginBottom: 10 }} />
+                <div style={{ height: 11, background: "#F0F0F0", borderRadius: 4, width: "35%" }} />
               </div>
             ))}
           </div>
         )}
 
-        {/* Results */}
-        {pageJobs.length > 0 && (
+        {/* Job results */}
+        {jobs.length > 0 && (
           <>
-            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-              <div style={{ fontSize:13,color:"#4B5675" }}>
-                Showing {(page-1)*PER_PAGE+1}-{Math.min(page*PER_PAGE,displayed.length)} of {displayed.length} jobs
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <div style={{ fontSize: 13, color: "#4B5675" }}>
+                Showing {(currentPage - 1) * JOBS_PER_PAGE + 1}&#8211;{Math.min(currentPage * JOBS_PER_PAGE, allJobs.length)} of {allJobs.length} jobs
               </div>
-              {loading && <span style={{ fontSize:12,color:"#0057FF",fontWeight:600 }}>Updating...</span>}
+              {loading && <span style={{ fontSize: 12, color: "#0057FF", fontWeight: 600 }}>Updating...</span>}
             </div>
-            <div style={{ display:"flex",flexDirection:"column",gap:mob?10:12 }}>
-              {pageJobs.map(job => (
-                <Card key={job.id} job={job} saved={saved.has(job.id)}
-                  onSave={handleSave} navigate={navigate} mob={mob} />
+            <div style={{ display: "flex", flexDirection: "column", gap: mob ? 10 : 12 }}>
+              {jobs.map(job => (
+                <JobCard key={job.id} job={job} onSave={handleSave} saved={savedJobs.has(job.id)} navigate={navigate} mob={mob} />
               ))}
             </div>
-            <Pages cur={page} total={totalPages} go={goPage} mob={mob} />
+            {totalPages > 1 && (
+              <div style={{ marginTop: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+                <div style={{ fontSize: 13, color: "#4B5675" }}>Page {currentPage} of {totalPages}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+                  <button onClick={() => goPage(currentPage - 1)} disabled={currentPage === 1}
+                    style={{ padding: "8px 14px", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: currentPage === 1 ? "not-allowed" : "pointer", border: "1.5px solid #E8EEFF", background: "#fff", color: currentPage === 1 ? "#9CA3B8" : "#0057FF", fontFamily: "inherit" }}>
+                    Prev
+                  </button>
+                  {(() => {
+                    const pages = []; const delta = mob ? 1 : 2
+                    const left = Math.max(2, currentPage - delta)
+                    const right = Math.min(totalPages - 1, currentPage + delta)
+                    pages.push(1)
+                    if (left > 2) pages.push("...")
+                    for (let i = left; i <= right; i++) pages.push(i)
+                    if (right < totalPages - 1) pages.push("...")
+                    if (totalPages > 1) pages.push(totalPages)
+                    return pages.map((pg, i) => pg === "..." ? (
+                      <span key={"d"+i} style={{ padding: "8px 4px", color: "#9CA3B8", fontSize: 13 }}>...</span>
+                    ) : (
+                      <button key={pg} onClick={() => goPage(pg)}
+                        style={{ padding: "8px 13px", borderRadius: 9, fontSize: 13, fontWeight: pg === currentPage ? 800 : 600, cursor: "pointer", border: "1.5px solid " + (pg === currentPage ? "#0057FF" : "#E8EEFF"), background: pg === currentPage ? "#0057FF" : "#fff", color: pg === currentPage ? "#fff" : "#4B5675", fontFamily: "inherit", minWidth: 38 }}>
+                        {pg}
+                      </button>
+                    ))
+                  })()}
+                  <button onClick={() => goPage(currentPage + 1)} disabled={currentPage === totalPages}
+                    style={{ padding: "8px 14px", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: currentPage === totalPages ? "not-allowed" : "pointer", border: "1.5px solid #E8EEFF", background: "#fff", color: currentPage === totalPages ? "#9CA3B8" : "#0057FF", fontFamily: "inherit" }}>
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
 
         {/* No results */}
-        {searched && displayed.length === 0 && !loading && (
-          <div style={{ textAlign:"center",padding:"48px 20px",background:"#fff",borderRadius:20,border:"1px solid #E8EEFF" }}>
-            <div style={{ fontSize:16,fontWeight:800,color:"#0A0F1E",marginBottom:8 }}>No sponsored jobs found</div>
-            <div style={{ fontSize:13,color:"#4B5675",marginBottom:16,lineHeight:1.7 }}>
-              Try a different role, location, or remove filters.<br/>
-              Try a different role or remove filters.
-            </div>
-            <button onClick={()=>{ setQ(""); setLoc(""); setFresherOnly(false); setVerifiedOnly(false); runSearch("","") }}
-              style={{ background:"linear-gradient(135deg,#0057FF,#00C2FF)",color:"#fff",border:"none",borderRadius:10,padding:"11px 24px",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
+        {searched && allJobs.length === 0 && !loading && (
+          <div style={{ textAlign: "center", padding: "48px 20px", background: "#fff", borderRadius: 20, border: "1px solid #E8EEFF" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>?</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#0A0F1E", marginBottom: 8 }}>No results found</div>
+            <div style={{ fontSize: 13, color: "#4B5675", marginBottom: 16 }}>Try a broader search or remove filters</div>
+            <button onClick={() => { setQ(""); setLoc(""); setVerifiedOnly(false); setFresherOnly(false); doSearch(1, "", "") }} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               Show All Sponsored Jobs
             </button>
           </div>
