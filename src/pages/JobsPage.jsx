@@ -173,61 +173,96 @@ async function batchCheck(employers) {
 // Three-step logic:
 //   1. Reject if title is an ineligible role (SOC check)
 //   2. Reject if any hard rejection keyword found in text
-//   3. Accept ONLY if employer is on gov register OR text has a confirmation keyword
-function isConfirmed(job, sponsor) {
+// SPONSORSHIP LIKELIHOOD SCORING
+//
+// Instead of hard pass/fail, every job gets a likelihood score 0-100.
+// Score determines the label on the card:
+//   80-100 = "Confirmed"   (gov verified + explicit keywords)
+//   60-79  = "Very Likely" (gov verified OR strong keywords)
+//   40-59  = "Likely"      (some positive signals, no rejections)
+//   1-39   = "Possible"    (no strong signals but no rejection either)
+//   0      = removed       (hard rejection OR ineligible role)
+//
+// This shows more jobs but ranks them honestly by likelihood.
+
+function scoreJob(job, sponsor) {
   const title = (job.title || "").toLowerCase()
 
-  // Step 1 - ineligible role
+  // Hard remove - ineligible SOC role
   for (const r of INELIGIBLE) {
-    if (title.includes(r.trim())) return false
+    if (title.includes(r.trim())) return 0
   }
 
-  // Step 2 - strip HTML then check rejection keywords
-  const raw = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ")
-  const text = (job.title + " " + raw + " " + job.employer).toLowerCase()
+  const raw  = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")
+  const text = (title + " " + raw + " " + (job.employer||"")).toLowerCase()
+
+  // Hard remove - explicit rejection phrase
   for (const neg of REJECT_KW) {
-    if (text.includes(neg)) return false
+    if (text.includes(neg)) return 0
   }
 
-  // Step 3 - must have confirmation
-  // Gov register verification is the strongest signal
-  if (sponsor) return true
-  // Otherwise must have an explicit confirmation keyword
-  for (const kw of CONFIRM_KW) {
-    if (text.includes(kw)) return true
+  let score = 0
+
+  // +55 on gov register (employer is licensed to sponsor)
+  if (sponsor) {
+    score += 55
+    if (sponsor.rating === "A") score += 10
   }
-  // No confirmation found - do not show
-  return false
+
+  // +30 explicit confirmation keyword
+  for (const kw of CONFIRM_KW) {
+    if (text.includes(kw)) { score += 30; break }
+  }
+
+  // +10 general visa keyword (weaker signal)
+  const weakKW = ["visa sponsorship","sponsor visa","skilled worker visa","tier 2","ukvi","international applicants","relocation package"]
+  for (const kw of weakKW) {
+    if (text.includes(kw)) { score += 10; break }
+  }
+
+  // +5 salary shown
+  if (job.salary_min && job.salary_min > 500) score += 5
+
+  // If still 0 - no signals but also no rejection - show as Possible
+  if (score === 0) score = 15
+
+  return Math.min(100, score)
 }
 
 function buildJob(job, sponsor) {
-  const raw = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ")
-  const text = (job.title + " " + raw + " " + job.employer).toLowerCase()
+  const score = scoreJob(job, sponsor)
+  if (score === 0) return null
 
-  let score = 0
-  const signals = []
+  const raw  = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")
+  const text = (job.title + " " + raw + " " + (job.employer||"")).toLowerCase()
 
+  const sigs = []
   if (sponsor) {
-    score += 55
-    signals.push({ t: "v", label: "Gov Verified" })
-    if (sponsor.rating === "A") { score += 10; signals.push({ t: "v", label: "A-Rated" }) }
+    sigs.push({ t:"v", label:"Gov Verified" })
+    if (sponsor.rating === "A") sigs.push({ t:"v", label:"A-Rated" })
   }
-
   for (const kw of CONFIRM_KW) {
-    if (text.includes(kw)) { score += 25; signals.push({ t: "s", label: "Sponsorship Confirmed" }); break }
+    if (text.includes(kw)) { sigs.push({ t:"s", label:"Sponsorship Confirmed" }); break }
   }
+  const weakKW2 = ["visa sponsorship","skilled worker visa","tier 2","ukvi"]
+  for (const kw of weakKW2) {
+    if (text.includes(kw)) { sigs.push({ t:"s", label:"Visa Mentioned" }); break }
+  }
+  if (job.salary_min && job.salary_min > 500) sigs.push({ t:"p", label:"Salary shown" })
 
   let fresher = false
   for (const kw of FRESHER_KW) { if (text.includes(kw)) { fresher = true; break } }
 
-  if (job.salary_min && job.salary_min > 500) {
-    score += 5; signals.push({ t: "p", label: "Salary shown" })
-  }
+  const likelihood =
+    score >= 80 ? "Confirmed" :
+    score >= 60 ? "Very Likely" :
+    score >= 40 ? "Likely" : "Possible"
 
   return {
     ...job,
-    score: Math.min(100, score),
-    signals: [...new Map(signals.map(s => [s.label, s])).values()].slice(0, 4),
+    score,
+    likelihood,
+    signals: [...new Map(sigs.map(s => [s.label, s])).values()].slice(0, 4),
     fresher,
     verified: !!sponsor,
     sponsorInfo: sponsor,
@@ -297,8 +332,8 @@ function Card({ job, saved, onSave, navigate, mob }) {
     const d = new Date(job.posted)
     return isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-GB", { day:"numeric", month:"short" })
   })()
-  const sc  = job.verified ? "#00D68F" : job.score >= 70 ? "#0057FF" : "#FF6B35"
-  const lbl = job.verified ? "Verified" : job.score >= 70 ? "Very Likely" : "Likely"
+  const sc  = job.score >= 80 ? "#00D68F" : job.score >= 60 ? "#0057FF" : job.score >= 40 ? "#FF6B35" : "#9CA3B8"
+  const lbl = job.likelihood || (job.verified ? "Confirmed" : job.score >= 60 ? "Very Likely" : job.score >= 40 ? "Likely" : "Possible")
 
   const sigColor = { v:"#00D68F", s:"#0057FF", p:"#FF6B35" }
 
@@ -496,10 +531,10 @@ export default function JobsPage() {
       // Check every employer against the Home Office register
       const sponsorMap = await batchCheck(raw.map(j => j.employer))
 
-      // STRICT FILTER: only jobs with confirmed sponsorship
+      // Score every job - buildJob returns null for hard rejections
       const confirmed = raw
-        .filter(j => isConfirmed(j, sponsorMap[j.employer]))
         .map(j => buildJob(j, sponsorMap[j.employer]))
+        .filter(Boolean)
 
       setAllJobs(confirmed)
       setSearched(true)
@@ -673,7 +708,7 @@ export default function JobsPage() {
         {allJobs.length > 0 && (
           <div style={{ display:"flex",gap:8,flexWrap:"wrap",marginBottom:14 }}>
             {[
-              { label:"Confirmed Jobs", value:stats.total,    color:"#0057FF" },
+              { label:"Total Jobs",     value:stats.total,    color:"#0057FF" },
               { label:"Gov Verified",   value:stats.verified, color:"#00D68F" },
               { label:"Fresher",        value:stats.fresher,  color:"#FF6B35" },
             ].map(s => (
@@ -702,7 +737,7 @@ export default function JobsPage() {
           <>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
               <div style={{ fontSize:13,color:"#4B5675" }}>
-                Showing {(page-1)*PER_PAGE+1}-{Math.min(page*PER_PAGE,displayed.length)} of {displayed.length} confirmed jobs
+                Showing {(page-1)*PER_PAGE+1}-{Math.min(page*PER_PAGE,displayed.length)} of {displayed.length} jobs
               </div>
               {loading && <span style={{ fontSize:12,color:"#0057FF",fontWeight:600 }}>Updating...</span>}
             </div>
@@ -719,9 +754,9 @@ export default function JobsPage() {
         {/* No results */}
         {searched && displayed.length === 0 && !loading && (
           <div style={{ textAlign:"center",padding:"48px 20px",background:"#fff",borderRadius:20,border:"1px solid #E8EEFF" }}>
-            <div style={{ fontSize:16,fontWeight:800,color:"#0A0F1E",marginBottom:8 }}>No confirmed sponsored jobs found</div>
+            <div style={{ fontSize:16,fontWeight:800,color:"#0A0F1E",marginBottom:8 }}>No sponsored jobs found</div>
             <div style={{ fontSize:13,color:"#4B5675",marginBottom:16,lineHeight:1.7 }}>
-              We only show jobs where sponsorship is explicitly confirmed.<br/>
+              Try a different role, location, or remove filters.<br/>
               Try a different role or remove filters.
             </div>
             <button onClick={()=>{ setQ(""); setLoc(""); setFresherOnly(false); setVerifiedOnly(false); runSearch("","") }}
