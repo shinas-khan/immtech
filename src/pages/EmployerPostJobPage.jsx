@@ -59,7 +59,7 @@ export default function EmployerPostJobPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { navigate("/auth", { state: { from: "/employer/post" } }); return }
+      if (!user) { (() => { localStorage.setItem("immtech_redirect", "/employer/post"); navigate("/auth", { state: { from: "/employer/post" } }); })(); return }
       setUser(user)
       supabase.from("employer_profiles").select("*").eq("user_id", user.id).single()
         .then(({ data }) => {
@@ -113,7 +113,7 @@ export default function EmployerPostJobPage() {
     setError("")
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { navigate("/auth", { state: { from: "/employer/post" } }); return }
+      if (!user) { (() => { localStorage.setItem("immtech_redirect", "/employer/post"); navigate("/auth", { state: { from: "/employer/post" } }); })(); return }
 
       const jobData = {
         employer_id: user.id,

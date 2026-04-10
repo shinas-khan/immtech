@@ -22,6 +22,17 @@ export default function AuthPage() {
     return () => window.removeEventListener("resize", check)
   }, [])
 
+  // If already logged in, redirect immediately
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        const dest = localStorage.getItem("immtech_redirect") || from
+        localStorage.removeItem("immtech_redirect")
+        navigate(dest, { replace: true })
+      }
+    })
+  }, [])
+
   const handleEmailAuth = async () => {
     if (!email || !password) { setError("Please fill in all fields"); return }
     setLoading(true); setError("")
@@ -41,9 +52,11 @@ export default function AuthPage() {
 
   const handleGoogle = async () => {
     setError("")
+    // Store destination before OAuth redirect - state is lost on full page reload
+    localStorage.setItem("immtech_redirect", from)
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin + from }
+      options: { redirectTo: window.location.origin + "/auth/callback" }
     })
     if (error) setError(error.message)
   }

@@ -11,7 +11,7 @@ export default function EmployerDashboardPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { navigate("/auth", { state: { from: "/employer/dashboard" } }); return }
+      if (!user) { (() => { localStorage.setItem("immtech_redirect", "/employer/dashboard"); navigate("/auth", { state: { from: "/employer/dashboard" } }); })(); return }
       supabase.from("employer_profiles").select("*").eq("user_id", user.id).single()
         .then(({ data }) => setProfile(data))
       supabase.from("direct_jobs").select("*").eq("employer_id", user.id).order("created_at", { ascending: false })
