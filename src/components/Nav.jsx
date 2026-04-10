@@ -11,7 +11,7 @@ export default function Nav() {
   const location = useLocation()
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth <= 768)
+    const check = () => setIsMobile(window.innerWidth <= 900)
     check()
     window.addEventListener("resize", check)
     return () => window.removeEventListener("resize", check)
@@ -38,22 +38,54 @@ export default function Nav() {
     else { navigate("/"); setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100) }
   }
 
-  const links = [
-    { label: "Find Jobs",    path: "/jobs" },
-    { label: "Visa Checker", path: "/visa-checker" },
-    { label: "COS Checker",  path: "/cos-checker" },
-    { label: "For Employers",path: "/employers" },
+  const navLinks = [
+    { label: "Find Jobs",     path: "/jobs" },
+    { label: "Visa Checker",  path: "/visa-checker" },
+    { label: "COS Checker",   path: "/cos-checker" },
+    { label: "For Employers", path: "/employers" },
   ]
 
-  const employerLinks = [
-    { label: "Post a Job",   path: "/employer/post" },
-    { label: "My Dashboard", path: "/employer/dashboard" },
+  const menuSections = [
+    {
+      title: "For Candidates",
+      links: [
+        { label: "Find Jobs",    path: "/jobs" },
+        { label: "Visa Checker", path: "/visa-checker" },
+        { label: "COS Checker",  path: "/cos-checker" },
+      ]
+    },
+    {
+      title: "For Employers",
+      links: [
+        { label: "Browse Talent",  path: "/employers" },
+        { label: "Post a Job",     path: "/employer/post" },
+        { label: "My Dashboard",   path: "/employer/dashboard" },
+      ]
+    },
+    {
+      title: "Company",
+      links: [
+        { label: "About",   path: "/about" },
+        { label: "Contact", path: "/contact" },
+        { label: "Mission", path: "/mission" },
+      ]
+    },
   ]
+
+  const menuItemStyle = active => ({
+    padding: "11px 14px",
+    borderRadius: 10,
+    background: active ? "#0057FF0D" : "transparent",
+    color: active ? "#0057FF" : "#0A0F1E",
+    fontWeight: active ? 700 : 400,
+    fontSize: 14,
+    cursor: "pointer",
+  })
 
   return (
     <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "rgba(255,255,255,0.97)", backdropFilter: "blur(20px)", borderBottom: "1px solid #E8EEFF", boxShadow: scrolled ? "0 2px 20px rgba(0,57,255,0.08)" : "none" }}>
 
-      <div style={{ maxWidth: 1140, margin: "0 auto", height: 68, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 5%" }}>
+      <div style={{ maxWidth: 1140, margin: "0 auto", height: 68, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 5%", gap: 16 }}>
 
         {/* Logo */}
         <div onClick={handleLogoClick} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flexShrink: 0 }}>
@@ -63,12 +95,12 @@ export default function Nav() {
           <span style={{ fontWeight: 900, fontSize: 20, letterSpacing: -0.8, color: "#0057FF" }}>IMMTECH</span>
         </div>
 
-        {/* Desktop nav links - hidden on mobile */}
+        {/* Desktop nav - hidden on mobile */}
         {!isMobile && (
-          <div style={{ display: "flex", gap: 28, alignItems: "center" }}>
-            {links.map(l => (
+          <div style={{ display: "flex", gap: 24, alignItems: "center", flex: 1, justifyContent: "center" }}>
+            {navLinks.map(l => (
               <span key={l.path} onClick={() => navigate(l.path)}
-                style={{ color: isActive(l.path) ? "#0057FF" : "#4B5675", fontWeight: isActive(l.path) ? 700 : 500, fontSize: 15, cursor: "pointer", borderBottom: isActive(l.path) ? "2px solid #0057FF" : "2px solid transparent", paddingBottom: 2 }}
+                style={{ color: isActive(l.path) ? "#0057FF" : "#4B5675", fontWeight: isActive(l.path) ? 700 : 500, fontSize: 14, cursor: "pointer", borderBottom: isActive(l.path) ? "2px solid #0057FF" : "2px solid transparent", paddingBottom: 2, whiteSpace: "nowrap" }}
                 onMouseEnter={e => e.currentTarget.style.color = "#0057FF"}
                 onMouseLeave={e => e.currentTarget.style.color = isActive(l.path) ? "#0057FF" : "#4B5675"}
               >{l.label}</span>
@@ -76,79 +108,85 @@ export default function Nav() {
           </div>
         )}
 
-        {/* Right side - auth buttons + hamburger always visible */}
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        {/* Right side */}
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
 
-          {/* Auth buttons - desktop only */}
+          {/* Auth buttons desktop only */}
           {!isMobile && (
             user ? (
               <>
-                <span onClick={() => navigate("/notifications")} style={{ fontSize: 20, cursor: "pointer" }}>&#128276;</span>
-                <div onClick={() => navigate("/profile")} style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg, #0057FF, #00C2FF)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
+                <span onClick={() => navigate("/notifications")} style={{ fontSize: 18, cursor: "pointer" }}>&#128276;</span>
+                <div onClick={() => navigate("/profile")} style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #0057FF, #00C2FF)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
                   {(user.email || "U")[0].toUpperCase()}
                 </div>
-                <button onClick={handleSignOut} style={{ background: "none", border: "1.5px solid #E8EEFF", color: "#4B5675", borderRadius: 9, padding: "7px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sign out</button>
+                <button onClick={handleSignOut} style={{ background: "none", border: "1.5px solid #E8EEFF", color: "#4B5675", borderRadius: 9, padding: "7px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sign out</button>
               </>
             ) : (
               <>
-                <button onClick={() => navigate("/auth")} style={{ background: "none", border: "1.5px solid #E8EEFF", color: "#0A0F1E", borderRadius: 9, padding: "8px 20px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sign in</button>
-                <button onClick={() => navigate("/onboarding")} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", border: "none", color: "#fff", borderRadius: 9, padding: "8px 20px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Get Started</button>
+                <button onClick={() => navigate("/auth")} style={{ background: "none", border: "1.5px solid #E8EEFF", color: "#0A0F1E", borderRadius: 9, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sign in</button>
+                <button onClick={() => navigate("/onboarding")} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", border: "none", color: "#fff", borderRadius: 9, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Get Started</button>
               </>
             )
           )}
 
-          {/* Hamburger - ALWAYS visible on both desktop and mobile */}
+          {/* Hamburger - always visible */}
           <button onClick={() => setMenuOpen(o => !o)}
             style={{ background: menuOpen ? "#F0F5FF" : "none", border: "1.5px solid " + (menuOpen ? "#0057FF30" : "#E8EEFF"), borderRadius: 9, padding: "7px 10px", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center" }}>
-            <div style={{ width: 20, height: 2, background: menuOpen ? "#0057FF" : "#4B5675", borderRadius: 2, transition: "all 0.25s", transform: menuOpen ? "rotate(45deg) translate(4px, 4px)" : "none" }} />
-            <div style={{ width: 20, height: 2, background: menuOpen ? "#0057FF" : "#4B5675", borderRadius: 2, transition: "all 0.25s", opacity: menuOpen ? 0 : 1 }} />
-            <div style={{ width: 20, height: 2, background: menuOpen ? "#0057FF" : "#4B5675", borderRadius: 2, transition: "all 0.25s", transform: menuOpen ? "rotate(-45deg) translate(4px, -4px)" : "none" }} />
+            <div style={{ width: 20, height: 2, background: menuOpen ? "#0057FF" : "#4B5675", borderRadius: 2, transition: "all 0.2s", transform: menuOpen ? "rotate(45deg) translate(4px, 4px)" : "none" }} />
+            <div style={{ width: 20, height: 2, background: menuOpen ? "#0057FF" : "#4B5675", borderRadius: 2, transition: "all 0.2s", opacity: menuOpen ? 0 : 1 }} />
+            <div style={{ width: 20, height: 2, background: menuOpen ? "#0057FF" : "#4B5675", borderRadius: 2, transition: "all 0.2s", transform: menuOpen ? "rotate(-45deg) translate(4px, -4px)" : "none" }} />
           </button>
         </div>
       </div>
 
-      {/* Dropdown menu - shows on both desktop and mobile when open */}
+      {/* Full dropdown menu */}
       {menuOpen && (
-        <div style={{ background: "#fff", borderTop: "1px solid #E8EEFF", padding: "12px 5% 20px", boxShadow: "0 8px 32px rgba(0,57,255,0.08)" }}>
-          <div style={{ maxWidth: 1140, margin: "0 auto" }}>
+        <div style={{ background: "#fff", borderTop: "1px solid #E8EEFF", boxShadow: "0 8px 32px rgba(0,57,255,0.08)" }}>
+          <div style={{ maxWidth: 1140, margin: "0 auto", padding: "20px 5% 24px" }}>
 
-            {/* Nav links - always in dropdown */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 8 }}>
-              {links.map(l => (
-                <div key={l.path} onClick={() => navigate(l.path)}
-                  style={{ padding: "13px 16px", borderRadius: 12, background: isActive(l.path) ? "#0057FF0D" : "transparent", color: isActive(l.path) ? "#0057FF" : "#0A0F1E", fontWeight: isActive(l.path) ? 700 : 500, fontSize: 16, cursor: "pointer" }}
-                  onMouseEnter={e => e.currentTarget.style.background = isActive(l.path) ? "#0057FF0D" : "#F8FAFF"}
-                  onMouseLeave={e => e.currentTarget.style.background = isActive(l.path) ? "#0057FF0D" : "transparent"}
-                >{l.label}</div>
+            {/* Sections grid */}
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: isMobile ? 0 : 24 }}>
+              {menuSections.map(section => (
+                <div key={section.title}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, padding: "0 14px", marginBottom: 4 }}>
+                    {section.title}
+                  </div>
+                  {section.links.map(l => (
+                    <div key={l.path} onClick={() => navigate(l.path)}
+                      style={menuItemStyle(isActive(l.path))}
+                      onMouseEnter={e => { if (!isActive(l.path)) e.currentTarget.style.background = "#F8FAFF" }}
+                      onMouseLeave={e => { if (!isActive(l.path)) e.currentTarget.style.background = "transparent" }}
+                    >{l.label}</div>
+                  ))}
+                </div>
               ))}
             </div>
 
-            <div style={{ height: 1, background: "#E8EEFF", margin: "8px 0" }} />
+            {/* Divider */}
+            <div style={{ height: 1, background: "#E8EEFF", margin: "16px 0" }} />
 
-            {/* Auth section in dropdown */}
+            {/* Auth section */}
             {user ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <div onClick={() => navigate("/profile")} style={{ padding: "13px 16px", borderRadius: 12, color: "#0A0F1E", fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div onClick={() => navigate("/profile")} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "8px 14px", borderRadius: 10 }}
                   onMouseEnter={e => e.currentTarget.style.background = "#F8FAFF"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                   <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg, #0057FF, #00C2FF)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 12 }}>
                     {(user.email || "U")[0].toUpperCase()}
                   </div>
-                  My Profile
+                  <span style={{ fontSize: 14, color: "#0A0F1E", fontWeight: 500 }}>My Profile</span>
                 </div>
-                <div onClick={() => navigate("/notifications")} style={{ padding: "13px 16px", borderRadius: 12, color: "#0A0F1E", fontSize: 16, cursor: "pointer" }}
+                <div onClick={() => navigate("/notifications")} style={{ padding: "8px 14px", borderRadius: 10, fontSize: 14, color: "#0A0F1E", cursor: "pointer" }}
                   onMouseEnter={e => e.currentTarget.style.background = "#F8FAFF"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                   &#128276; Alerts
                 </div>
-                <button onClick={handleSignOut} style={{ margin: "8px 16px 0", background: "none", border: "1.5px solid #E8EEFF", color: "#4B5675", borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-                  Sign out
-                </button>
+                <button onClick={handleSignOut} style={{ background: "none", border: "1.5px solid #E8EEFF", color: "#4B5675", borderRadius: 9, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sign out</button>
               </div>
             ) : (
-              <div style={{ display: "flex", gap: 10, padding: "8px 0 0", flexWrap: "wrap" }}>
-                <button onClick={() => navigate("/auth")} style={{ flex: 1, background: "none", border: "1.5px solid #E8EEFF", color: "#0A0F1E", borderRadius: 10, padding: "13px", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", minWidth: 120 }}>Sign in</button>
-                <button onClick={() => navigate("/onboarding")} style={{ flex: 1, background: "linear-gradient(135deg, #0057FF, #00C2FF)", border: "none", color: "#fff", borderRadius: 10, padding: "13px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", minWidth: 120 }}>Get Started Free</button>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => navigate("/auth")} style={{ background: "none", border: "1.5px solid #E8EEFF", color: "#0A0F1E", borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sign in</button>
+                <button onClick={() => navigate("/onboarding")} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", border: "none", color: "#fff", borderRadius: 10, padding: "11px 24px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Get Started Free</button>
               </div>
             )}
           </div>
