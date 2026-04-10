@@ -39,10 +39,15 @@ export default function Nav() {
   }
 
   const links = [
-    { label: "Find Jobs", path: "/jobs" },
+    { label: "Find Jobs",    path: "/jobs" },
     { label: "Visa Checker", path: "/visa-checker" },
-    { label: "For Employers", path: "/employers" },
-    { label: "COS Checker", path: "/cos-checker" },
+    { label: "COS Checker",  path: "/cos-checker" },
+    { label: "For Employers",path: "/employers" },
+  ]
+
+  const employerLinks = [
+    { label: "Post a Job",   path: "/employer/post" },
+    { label: "My Dashboard", path: "/employer/dashboard" },
   ]
 
   return (
