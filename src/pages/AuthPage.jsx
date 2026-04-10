@@ -40,11 +40,25 @@ export default function AuthPage() {
   }
 
   const handleGoogle = async () => {
+    setError("")
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: window.location.origin + from }
     })
     if (error) setError(error.message)
+  }
+
+  const handleForgotPassword = async () => {
+    if (!email) { setError("Please enter your email address first, then click Forgot password"); return }
+    setLoading(true); setError("")
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + "/reset-password"
+      })
+      if (error) throw error
+      setSuccess("Password reset email sent! Check your inbox and follow the link.")
+    } catch (err) { setError(err.message) }
+    finally { setLoading(false) }
   }
 
   const inp = {
@@ -58,11 +72,62 @@ export default function AuthPage() {
     marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.7
   }
 
+  if (mode === "reset") {
+    return (
+      <div style={{ minHeight: "100vh", background: "#F8FAFF", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px 16px" }}>
+        <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 24, padding: mob ? "32px 24px" : "48px 44px", width: "100%", maxWidth: 460, boxShadow: "0 20px 60px rgba(0,57,255,0.07)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
+            <div onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #0057FF, #00C2FF)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ color: "#fff", fontWeight: 900, fontSize: 13 }}>IT</span>
+              </div>
+              <span style={{ fontWeight: 900, fontSize: 20, color: "#0057FF", letterSpacing: -1 }}>IMMTECH</span>
+            </div>
+            <button onClick={() => setMode("signin")} style={{ background: "none", border: "1.5px solid #E8EEFF", color: "#4B5675", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Back</button>
+          </div>
+
+          <h1 style={{ fontSize: 24, fontWeight: 900, color: "#0A0F1E", margin: "0 0 8px" }}>Reset your password</h1>
+          <p style={{ color: "#4B5675", fontSize: 14, margin: "0 0 24px", lineHeight: 1.6 }}>
+            Enter your email address and we will send you a link to reset your password.
+          </p>
+
+          {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#DC2626", fontSize: 13 }}>{error}</div>}
+          {success && <div style={{ background: "#EAF3DE", border: "1px solid #00D68F40", borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#3B6D11", fontSize: 13, lineHeight: 1.6 }}>{success}</div>}
+
+          {!success && (
+            <>
+              <div style={{ marginBottom: 20 }}>
+                <label style={lbl}>Email address</label>
+                <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="you@example.com" style={inp}
+                  onFocus={e => e.target.style.borderColor = "#0057FF"}
+                  onBlur={e => e.target.style.borderColor = "#E8EEFF"}
+                  onKeyDown={e => { if (e.key === "Enter") handleForgotPassword() }} />
+              </div>
+              <button onClick={handleForgotPassword} disabled={loading}
+                style={{ width: "100%", background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: 11, padding: "14px", fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: loading ? 0.8 : 1 }}>
+                {loading ? "Sending..." : "Send reset email"}
+              </button>
+            </>
+          )}
+
+          {success && (
+            <button onClick={() => setMode("signin")} style={{ width: "100%", background: "#F8FAFF", border: "1.5px solid #E8EEFF", color: "#0A0F1E", borderRadius: 11, padding: "14px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              Back to sign in
+            </button>
+          )}
+
+          <div style={{ marginTop: 20, background: "#E6F1FB", borderRadius: 10, padding: "12px 14px", fontSize: 13, color: "#185FA5", lineHeight: 1.6 }}>
+            <strong>Signed up with Google?</strong> You don't need a password. Click "Back" and use "Continue with Google" to sign in instantly.
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{ minHeight: "100vh", background: "#F8FAFF", display: "flex", alignItems: "center", justifyContent: "center", padding: mob ? "20px 16px" : "40px 20px" }}>
       <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: mob ? 20 : 24, padding: mob ? "32px 24px" : "48px 44px", width: "100%", maxWidth: 460, boxShadow: "0 20px 60px rgba(0,57,255,0.07)" }}>
 
-        {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
           <div onClick={() => navigate("/")} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #0057FF, #00C2FF)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -70,9 +135,7 @@ export default function AuthPage() {
             </div>
             <span style={{ fontWeight: 900, fontSize: 20, color: "#0057FF", letterSpacing: -1 }}>IMMTECH</span>
           </div>
-          <button onClick={() => navigate(-1)} style={{ background: "none", border: "1.5px solid #E8EEFF", color: "#4B5675", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
-            Back
-          </button>
+          <button onClick={() => navigate(-1)} style={{ background: "none", border: "1.5px solid #E8EEFF", color: "#4B5675", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Back</button>
         </div>
 
         <h1 style={{ fontSize: mob ? 24 : 26, fontWeight: 900, color: "#0A0F1E", margin: "0 0 6px", letterSpacing: -0.8 }}>
@@ -82,22 +145,14 @@ export default function AuthPage() {
           {mode === "signin" ? "Sign in to your IMMTECH account" : "Join thousands of international professionals"}
         </p>
 
-        {error && (
-          <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#DC2626", fontSize: 13 }}>
-            {error}
-          </div>
-        )}
-        {success && (
-          <div style={{ background: "#EAF3DE", border: "1px solid #00D68F40", borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#3B6D11", fontSize: 13 }}>
-            {success}
-          </div>
-        )}
+        {error && <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#DC2626", fontSize: 13 }}>{error}</div>}
+        {success && <div style={{ background: "#EAF3DE", border: "1px solid #00D68F40", borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#3B6D11", fontSize: 13 }}>{success}</div>}
 
-        {/* Google button */}
-        <button onClick={handleGoogle} style={{ width: "100%", background: "#fff", border: "1.5px solid #E8EEFF", borderRadius: 11, padding: "12px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 20, color: "#0A0F1E" }}
+        {/* Google - most prominent for OAuth users */}
+        <button onClick={handleGoogle}
+          style={{ width: "100%", background: "#fff", border: "1.5px solid #E8EEFF", borderRadius: 11, padding: "12px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 20, color: "#0A0F1E" }}
           onMouseEnter={e => e.currentTarget.style.borderColor = "#0057FF"}
-          onMouseLeave={e => e.currentTarget.style.borderColor = "#E8EEFF"}
-        >
+          onMouseLeave={e => e.currentTarget.style.borderColor = "#E8EEFF"}>
           <svg width="18" height="18" viewBox="0 0 18 18">
             <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 002.38-5.88c0-.57-.05-.66-.15-1.18z"/>
             <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 01-7.18-2.54H1.83v2.07A8 8 0 008.98 17z"/>
@@ -107,9 +162,16 @@ export default function AuthPage() {
           Continue with Google
         </button>
 
+        {/* Info banner for Google users */}
+        {mode === "signin" && (
+          <div style={{ background: "#E6F1FB", borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#185FA5", lineHeight: 1.6 }}>
+            <strong>Signed up with Google?</strong> Use the button above  no password needed.
+          </div>
+        )}
+
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
           <div style={{ flex: 1, height: 1, background: "#E8EEFF" }} />
-          <span style={{ fontSize: 12, color: "#9CA3B8", fontWeight: 500 }}>or</span>
+          <span style={{ fontSize: 12, color: "#9CA3B8", fontWeight: 500 }}>or sign in with email</span>
           <div style={{ flex: 1, height: 1, background: "#E8EEFF" }} />
         </div>
 
@@ -129,13 +191,23 @@ export default function AuthPage() {
             onBlur={e => e.target.style.borderColor = "#E8EEFF"} />
         </div>
 
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 8 }}>
           <label style={lbl}>Password</label>
           <input value={password} onChange={e => setPassword(e.target.value)} type="password" placeholder="At least 8 characters" style={inp}
             onFocus={e => e.target.style.borderColor = "#0057FF"}
             onBlur={e => e.target.style.borderColor = "#E8EEFF"}
             onKeyDown={e => { if (e.key === "Enter") handleEmailAuth() }} />
         </div>
+
+        {mode === "signin" && (
+          <div style={{ textAlign: "right", marginBottom: 20 }}>
+            <span onClick={() => { setMode("reset"); setError(""); setSuccess("") }}
+              style={{ fontSize: 13, color: "#0057FF", cursor: "pointer", fontWeight: 600 }}>
+              Forgot password?
+            </span>
+          </div>
+        )}
+        {mode === "signup" && <div style={{ marginBottom: 20 }} />}
 
         <button onClick={handleEmailAuth} disabled={loading}
           style={{ width: "100%", background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: 11, padding: "14px", fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: loading ? 0.8 : 1 }}>

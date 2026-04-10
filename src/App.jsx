@@ -15,6 +15,7 @@ import AboutPage from "./pages/AboutPage"
 import ContactPage from "./pages/ContactPage"
 import CareersPage from "./pages/CareersPage"
 import ProfileCheckPage from "./pages/ProfileCheckPage"
+import ResetPasswordPage from "./pages/ResetPasswordPage"
 import { PrivacyPage, TermsPage, CookiePage, GDPRPage, MissionPage } from "./pages/LegalPages"
 
 export default function App() {
@@ -61,6 +62,8 @@ export default function App() {
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/careers" element={<CareersPage />} />
           <Route path="/mission" element={<MissionPage />} />
+
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Legal */}
           <Route path="/privacy-policy" element={<PrivacyPage />} />
