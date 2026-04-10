@@ -8,6 +8,9 @@ import NotificationsPage from "./pages/NotificationsPage"
 import VisaCheckerPage from "./pages/VisaCheckerPage"
 import EmployersPage from "./pages/EmployersPage"
 import EmployerProfilePage from "./pages/EmployerProfilePage"
+import EmployerPostJobPage from "./pages/EmployerPostJobPage"
+import EmployerDashboardPage from "./pages/EmployerDashboardPage"
+import COSCheckerPage from "./pages/COSCheckerPage"
 import AboutPage from "./pages/AboutPage"
 import ContactPage from "./pages/ContactPage"
 import CareersPage from "./pages/CareersPage"
@@ -32,20 +35,34 @@ export default function App() {
           @media (max-width: 768px) { html, body { overflow-x: hidden; } }
         `}</style>
         <Routes>
+          {/* Main */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/jobs" element={<JobsPage />} />
+
+          {/* Auth */}
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
+
+          {/* Candidate */}
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile-check" element={<ProfileCheckPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/visa-checker" element={<VisaCheckerPage />} />
+          <Route path="/cos-checker" element={<COSCheckerPage />} />
+
+          {/* Employers */}
           <Route path="/employers" element={<EmployersPage />} />
           <Route path="/employer/:name" element={<EmployerProfilePage />} />
+          <Route path="/employer/post" element={<EmployerPostJobPage />} />
+          <Route path="/employer/dashboard" element={<EmployerDashboardPage />} />
+
+          {/* Company */}
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/careers" element={<CareersPage />} />
           <Route path="/mission" element={<MissionPage />} />
+
+          {/* Legal */}
           <Route path="/privacy-policy" element={<PrivacyPage />} />
           <Route path="/terms-of-service" element={<TermsPage />} />
           <Route path="/cookie-policy" element={<CookiePage />} />
