@@ -148,41 +148,77 @@ async function batchCheckSponsors(employers) {
   return results
 }
 
-// SPONSORSHIP LIKELIHOOD SCORING
+// ─────────────────────────────────────────────────────────────
+// SPONSORSHIP SCORING — Fixed & Balanced
 //
-// THREE hard rules before any score is assigned:
-//   1. Salary must meet Home Office minimum (GBP 41,700 general / GBP 29,000 health)
-//   2. No explicit rejection phrase in the description
-//   3. Must have at least one positive sponsorship signal
+// THE CORE INSIGHT:
+//   Being on the UK Home Office sponsor register IS the signal.
+//   A company on the register CAN sponsor. That's the law.
+//   We don't need the job description to also say "visa sponsorship"
+//   because most legitimate sponsored jobs don't say that explicitly.
+//
+// OLD PROBLEM: Requiring both register match AND keyword = almost nothing passes.
+// NEW APPROACH:
+//   - Register match alone = show the job (Gov Verified tier)
+//   - Explicit keyword alone = show the job (Likely tier)
+//   - Both together = highest score (Confirmed tier)
+//   - Only hard-reject on explicit NO-SPONSORSHIP phrases
+//   - Salary check: only reject if salary is definitively stated AND below threshold
+//     (most jobs don't show salary — don't penalise them for that)
 //
 // Score tiers:
-//   80-100 -> "Confirmed"   green  (register + explicit keyword)
-//   60-79  -> "Very Likely" blue   (register OR strong keyword)
-//   40-59  -> "Likely"      orange (weaker keyword match)
-//   0      -> hidden
+//   80-100 -> "Confirmed"    green  (register + explicit keyword)
+//   60-79  -> "Very Likely"  blue   (register only OR strong keyword)
+//   40-59  -> "Likely"       orange (weaker keyword or unverified employer)
+//   0      -> hidden         (explicit no-sponsorship OR obvious salary mismatch)
+// ─────────────────────────────────────────────────────────────
 
-// Minimum salary thresholds - Home Office rules (July 2025)
-const MIN_SALARY_GENERAL    = 41700   // Skilled Worker standard
-const MIN_SALARY_HEALTH     = 29000   // Health & Care Worker route
-const MIN_SALARY_SHORTAGE   = 33400   // Shortage Occupation list
-const MIN_SALARY_NEW_ENTRANT = 33400  // New entrant rate
-
-// Health roles that have lower threshold
+// Only reject salary if it's clearly stated AND clearly below threshold
+// Most jobs don't show salary — do NOT filter those out
+const MIN_SALARY_HARD_REJECT = 20000  // Only reject if clearly below this
 const HEALTH_ROLES = [
   "nurse", "midwife", "paramedic", "pharmacist", "dentist",
   "physiotherapist", "radiographer", "occupational therapist",
-  "speech therapist", "doctor", "surgeon", "physician", "gp ",
-  "healthcare professional", "clinical", "ward",
+  "speech therapist", "doctor", "surgeon", "physician",
+  "healthcare", "clinical", "ward",
 ]
 
-// Shortage occupation roles (lower threshold applies)
-const SHORTAGE_ROLES = [
-  "teacher", "secondary teacher", "primary teacher",
-  "social worker", "probation officer",
-  "civil engineer", "mechanical engineer", "electrical engineer",
+// Only the most explicit, unambiguous no-sponsorship phrases
+// Removed: "must have right to work" — this is standard UK legal boilerplate
+// that appears in MANY sponsored jobs too. Don't use it to reject.
+const HARD_REJECT_KW = [
+  "no sponsorship",
+  "no visa sponsorship",
+  "sponsorship not available",
+  "sponsorship is not available",
+  "cannot sponsor",
+  "unable to sponsor",
+  "we do not offer sponsorship",
+  "does not offer sponsorship",
+  "cannot offer sponsorship",
+  "we cannot offer sponsorship",
+  "we do not sponsor",
+  "we cannot sponsor",
+  "visa sponsorship is not available",
+  "this role does not offer sponsorship",
+  "this position does not offer sponsorship",
+  "not eligible for uk visa sponsorship",
+  "not eligible for visa sponsorship",
+  "sponsorship cannot be offered",
+  "we are unable to offer sponsorship",
+  "we do not provide sponsorship",
+  "unable to offer sponsorship for this role",
+  // Scam indicators only
+  "self sponsored",
+  "self-sponsored",
+  "registration fee",
+  "upfront fee",
+  "commission only",
+  "pyramid scheme",
+  "multi-level marketing",
 ]
 
-// Keywords that CONFIRM sponsorship explicitly
+// Explicit confirmation keywords in job description
 const CONFIRM_KW = [
   "certificate of sponsorship",
   "cos will be provided",
@@ -205,98 +241,93 @@ const CONFIRM_KW = [
   "visa support provided",
   "we can offer sponsorship",
   "sponsorship for this role",
+  "sponsorship is provided",
+  "we are able to sponsor",
 ]
 
-// Keywords that mention visa/sponsorship (weaker signal)
+// Weaker visa mentions — suggests awareness of sponsorship
 const MENTION_KW = [
   "visa sponsorship",
-  "sponsor visa",
   "skilled worker visa",
   "tier 2",
   "ukvi",
   "sponsorship considered",
   "international applicants welcome",
+  "international applicants",
   "relocation package",
   "visa support",
+  "right to work sponsorship",
+  "work permit",
+  "global talent",
 ]
-
-function getMinSalary(title) {
-  const t = (title || "").toLowerCase()
-  if (HEALTH_ROLES.some(r => t.includes(r))) return MIN_SALARY_HEALTH
-  if (SHORTAGE_ROLES.some(r => t.includes(r))) return MIN_SALARY_SHORTAGE
-  return MIN_SALARY_GENERAL
-}
 
 function scoreJob(job, sponsorData) {
   const rawDesc = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")
   const text = (job.title + " " + rawDesc + " " + job.employer).toLowerCase()
-  const title = (job.title || "").toLowerCase()
 
-  // RULE 1: Salary threshold check
-  // If salary is known and below the Home Office minimum, cannot be sponsored
-  const minSal = getMinSalary(job.title)
-  if (job.salary_max && job.salary_max < minSal) {
-    return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
-  }
-  if (job.salary_min && job.salary_min < minSal && !job.salary_max) {
-    return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
-  }
-  // Daily/hourly rate flags (cannot meet annual threshold)
-  if (job.salary_max && job.salary_max < 500) {
-    return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
-  }
-
-  // RULE 2: Hard reject on explicit no-sponsorship phrase
-  for (const neg of NEG_KW) {
+  // HARD REJECT 1: Explicit no-sponsorship phrase
+  for (const neg of HARD_REJECT_KW) {
     if (text.includes(neg)) return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
+  }
+
+  // HARD REJECT 2: Salary clearly stated AND clearly below any possible threshold
+  // Only reject if salary_max (the ceiling) is below £20k — definitely not sponsorable
+  // Do NOT reject if salary is unknown (most jobs don't show it)
+  const isHealthRole = HEALTH_ROLES.some(r => text.includes(r))
+  if (job.salary_max && job.salary_max > 0 && job.salary_max < MIN_SALARY_HARD_REJECT) {
+    return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
+  }
+  // Daily/hourly rates (tiny numbers that clearly aren't annual)
+  if (job.salary_max && job.salary_max < 500 && job.salary_max > 0) {
+    return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
   }
 
   let score = 0
   const signals = []
-  let hasPositiveSignal = false
 
-  // SIGNAL A: Employer on gov register (licensed to sponsor)
+  // SIGNAL A: Employer on the UK Home Office sponsor register
+  // This is the strongest and most reliable signal — they ARE licensed to sponsor
   if (sponsorData) {
-    score += 55
-    hasPositiveSignal = true
+    score += 60
     signals.push({ type: "verified", label: "Gov Verified" })
     if (sponsorData.rating === "A") {
-      score += 10
+      score += 8
       signals.push({ type: "rating", label: "A-Rated" })
     }
   }
 
-  // SIGNAL B: Explicit confirmation keyword in description
+  // SIGNAL B: Explicit confirmation keyword in job description
+  let hasConfirm = false
   for (const kw of CONFIRM_KW) {
     if (text.includes(kw)) {
-      score += 30
-      hasPositiveSignal = true
+      score += 25
+      hasConfirm = true
       signals.push({ type: "visa", label: "Sponsorship Confirmed" })
       break
     }
   }
 
-  // SIGNAL C: Weaker visa mention (only if no other signal yet, gives partial score)
-  if (!hasPositiveSignal) {
+  // SIGNAL C: Weaker visa mention
+  if (!hasConfirm) {
     for (const kw of MENTION_KW) {
       if (text.includes(kw)) {
-        score += 15
-        hasPositiveSignal = true
+        score += 12
         signals.push({ type: "visa", label: "Visa Mentioned" })
         break
       }
     }
   }
 
-  // RULE 3: Must have at least one positive signal
-  if (!hasPositiveSignal) {
-    return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
+  // SIGNAL D: Salary meets or likely meets threshold (positive signal, not required)
+  if (job.salary_min && job.salary_min >= (isHealthRole ? 29000 : 38700)) {
+    score += 7
+    signals.push({ type: "salary", label: "Salary eligible" })
   }
 
-  // Salary signal
-  if (job.salary_min && job.salary_min >= minSal) {
-    score += 5
-    signals.push({ type: "salary", label: "Salary shown" })
+  // If score is still 0 — no signal at all — hide the job
+  // But note: if employer IS on register, score is already 60 so this won't trigger
+  if (score === 0) {
+    return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
   }
 
   // Fresher check
@@ -304,7 +335,7 @@ function scoreJob(job, sponsorData) {
   for (const kw of FRESHER_KW) { if (text.includes(kw)) { fresherFriendly = true; break } }
 
   const s = Math.min(100, score)
-  const likelihood = s >= 80 ? "Confirmed" : s >= 60 ? "Very Likely" : "Likely"
+  const likelihood = s >= 80 ? "Confirmed" : s >= 60 ? "Very Likely" : s >= 40 ? "Likely" : "Possible"
 
   return {
     score: s,
