@@ -8,7 +8,100 @@ const ADZUNA_ID = "344e86d1"
 const ADZUNA_KEY = "039c47ae80bab92aef99751a471040fb"
 
 const FRESHER_KW = ["graduate","entry level","junior","trainee","apprentice","no experience","fresh graduate","new graduate","grad scheme","graduate scheme","placement","internship"]
-const NEG_KW = ["must have right to work","no sponsorship","sponsorship not available","cannot sponsor","uk residents only","british nationals only","no visa sponsorship","must be eligible to work in the uk without sponsorship"]
+const NEG_KW = [
+  // Direct no-sponsorship statements
+  "no sponsorship",
+  "no visa sponsorship",
+  "sponsorship not available",
+  "sponsorship is not available",
+  "cannot sponsor",
+  "unable to sponsor",
+  "unable to offer sponsorship",
+  "we do not offer sponsorship",
+  "does not offer sponsorship",
+  "cannot offer visa",
+  "cannot offer sponsorship",
+  "not in a position to sponsor",
+  "we are not in a position to sponsor",
+  "sponsorship cannot be offered",
+  "we are unable to offer visa",
+  "we are unable to offer sponsorship",
+  "we cannot offer sponsorship",
+  "we do not provide sponsorship",
+  "sponsorship is not provided",
+  "visa sponsorship is not available",
+  "we do not sponsor",
+  "we cannot sponsor",
+  "not able to offer sponsorship",
+  "unable to offer sponsorship for this role",
+  "this role does not offer sponsorship",
+  "this position does not offer sponsorship",
+  "this role is not eligible for sponsorship",
+  "this position is not eligible for sponsorship",
+  "this post is not eligible for",
+  "this vacancy does not offer",
+  "this role does not qualify for sponsorship",
+  "not eligible for uk visa sponsorship",
+  "not eligible for visa sponsorship",
+  "not open to sponsorship",
+  "will not be open to sponsorship",
+  "this post will not be open to sponsorship",
+  "not open to skilled worker visa",
+  "no work permit",
+  "work permit will not be sponsored",
+  "cannot provide certificate of sponsorship",
+  "we cannot accept applicants who require sponsorship",
+  "cannot accept applicants who require sponsorship",
+  "unable to accept applicants with skilled worker",
+  "we cannot accept applications from candidates who require",
+  "will not be able to progress any candidates who require",
+  "unable to progress candidates who require a certificate",
+  "require a certificate of sponsorship to work",
+  "not accept candidates who need sponsorship",
+  // Right to work requirements
+  "must have right to work",
+  "must have the right to work",
+  "you must have the right to work",
+  "must already have the right to work",
+  "applicants must have the right to work",
+  "only applicants with the right to work",
+  "right to work in the uk is required",
+  "right to work without sponsorship",
+  "own right to work",
+  "must be eligible to work in the uk without sponsorship",
+  "must be eligible to work in the uk without a sponsor",
+  "eligible to work in the uk without requiring sponsorship",
+  "you must not require sponsorship",
+  "must not require a work visa",
+  // Resident/nationality restrictions
+  "uk residents only",
+  "british nationals only",
+  "british citizens only",
+  "must be a uk resident",
+  "must reside in the uk",
+  "must be based in the uk",
+  // Salary threshold issues
+  "salary does not meet the home office",
+  "does not meet the home office requirements",
+  "does not meet the minimum salary threshold",
+  // Scam indicators
+  "self sponsored",
+  "self-sponsored",
+  "sponsor yourself",
+  "acquire own business",
+  "own your own business",
+  "buy a franchise",
+  "business opportunity",
+  "commission only",
+  "registration fee",
+  "upfront fee",
+  "admin fee required",
+  "course fee",
+  "you will need to pay",
+  "candidate pays",
+  "pyramid",
+  "multi-level marketing",
+]
 const VISA_KW = ["visa sponsorship","sponsor visa","certificate of sponsorship","cos provided","skilled worker visa","tier 2","ukvi","sponsorship available","will sponsor","sponsorship provided","visa support","sponsorship considered","open to sponsorship","visa provided","relocation package","international applicants"]
 
 const ALL_ROLES = ["All Jobs", ...ALL_JOBS]
@@ -56,54 +149,118 @@ async function batchCheckSponsors(employers) {
 }
 
 // SPONSORSHIP LIKELIHOOD SCORING
-// Every job gets a score 0-100. Score = 0 means hard filtered out.
-// Score determines badge:
-//   80-100 -> "Confirmed"   green  (gov verified + explicit keyword)
-//   60-79  -> "Very Likely" blue   (gov verified OR strong keyword)
-//   40-59  -> "Likely"      orange (some visa signals, no rejection)
-//   1-39   -> "Possible"    grey   (no strong signal but no rejection either)
-//   0      -> hidden        (explicit rejection phrase found)
+//
+// RULE: A job only shows if it has at least ONE positive sponsorship signal.
+// Signals are:
+//   A) Employer is on the UK Home Office sponsor register  (strongest)
+//   B) Description contains an explicit sponsorship keyword
+//
+// If neither A nor B is present -> score = 0 -> hidden. No exceptions.
+// This means no more "typical job board" results with no sponsorship.
+//
+// Score tiers for jobs that DO pass:
+//   80-100 -> "Confirmed"   green  (register + explicit keyword)
+//   60-79  -> "Very Likely" blue   (register only, or strong keyword)
+//   40-59  -> "Likely"      orange (weaker keyword match)
+//   0      -> hidden        (rejection phrase OR no signal at all)
+
+// Keywords that CONFIRM sponsorship (explicit and unambiguous)
+const CONFIRM_KW = [
+  "certificate of sponsorship",
+  "cos will be provided",
+  "cos provided",
+  "we will sponsor",
+  "visa sponsorship provided",
+  "visa sponsorship available",
+  "visa sponsorship offered",
+  "sponsorship is available",
+  "sponsorship provided",
+  "sponsorship available",
+  "will sponsor",
+  "open to sponsorship",
+  "able to offer sponsorship",
+  "happy to sponsor",
+  "can provide sponsorship",
+  "tier 2 sponsorship",
+  "ukvi sponsorship",
+  "skilled worker visa sponsorship",
+  "visa support provided",
+  "we can offer sponsorship",
+  "sponsorship for this role",
+]
+
+// Keywords that MENTION visa/sponsorship (weaker - job may or may not sponsor)
+const MENTION_KW = [
+  "visa sponsorship",
+  "sponsor visa",
+  "skilled worker visa",
+  "tier 2",
+  "ukvi",
+  "sponsorship considered",
+  "international applicants welcome",
+  "relocation package",
+  "visa support",
+]
+
 function scoreJob(job, sponsorData) {
   const rawDesc = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")
   const text = (job.title + " " + rawDesc + " " + job.employer).toLowerCase()
 
-  // Hard reject - explicit no-sponsorship phrase
-  for (const neg of NEG_KW) { if (text.includes(neg)) return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" } }
+  // Step 1 - hard reject on explicit no-sponsorship phrase
+  for (const neg of NEG_KW) {
+    if (text.includes(neg)) return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
+  }
 
   let score = 0
   const signals = []
-  let fresherFriendly = false
+  let hasPositiveSignal = false
 
-  // +55 employer on gov register (licensed to sponsor - strongest signal)
+  // Step 2 - gov register check (strongest signal - employer IS licensed)
   if (sponsorData) {
     score += 55
+    hasPositiveSignal = true
     signals.push({ type: "verified", label: "Gov Verified" })
-    if (sponsorData.rating === "A") { score += 10; signals.push({ type: "rating", label: "A-Rated" }) }
+    if (sponsorData.rating === "A") {
+      score += 10
+      signals.push({ type: "rating", label: "A-Rated" })
+    }
   }
 
-  // +30 explicit confirmation keyword
-  const strongKW = ["certificate of sponsorship","cos provided","cos will be provided","we will sponsor","visa sponsorship provided","sponsorship is available","sponsorship provided","sponsorship available","will sponsor","able to offer sponsorship","happy to sponsor","can provide sponsorship","visa sponsorship offered"]
-  for (const kw of strongKW) {
-    if (text.includes(kw)) { score += 30; signals.push({ type: "visa", label: "Sponsorship Confirmed" }); break }
+  // Step 3 - explicit confirmation keyword
+  for (const kw of CONFIRM_KW) {
+    if (text.includes(kw)) {
+      score += 30
+      hasPositiveSignal = true
+      signals.push({ type: "visa", label: "Sponsorship Confirmed" })
+      break
+    }
   }
 
-  // +12 general visa keyword (weaker signal)
-  const weakKW = ["visa sponsorship","sponsor visa","skilled worker visa","tier 2","ukvi","open to sponsorship","sponsorship considered","international applicants","relocation package","visa support"]
-  for (const kw of weakKW) {
-    if (text.includes(kw)) { score += 12; signals.push({ type: "visa", label: "Visa Mentioned" }); break }
+  // Step 4 - weaker mention keyword (only adds score if already has a signal)
+  for (const kw of MENTION_KW) {
+    if (text.includes(kw)) {
+      score += 10
+      hasPositiveSignal = true
+      signals.push({ type: "visa", label: "Visa Mentioned" })
+      break
+    }
   }
 
-  // If still 0 - no signals but no rejection - show as Possible
-  if (score === 0) score = 20
+  // THE KEY RULE: if no positive signal found -> do not show
+  if (!hasPositiveSignal) return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
 
-  // +5 salary shown (legitimate employers usually show salary)
-  if (job.salary_min || job.salary_max) { score += 5; signals.push({ type: "salary", label: "Salary shown" }) }
+  // Salary signal
+  if (job.salary_min || job.salary_max) {
+    score += 5
+    signals.push({ type: "salary", label: "Salary shown" })
+  }
 
   // Fresher check
+  let fresherFriendly = false
   for (const kw of FRESHER_KW) { if (text.includes(kw)) { fresherFriendly = true; break } }
 
   const s = Math.min(100, score)
-  const likelihood = s >= 80 ? "Confirmed" : s >= 60 ? "Very Likely" : s >= 40 ? "Likely" : "Possible"
+  const likelihood = s >= 80 ? "Confirmed" : s >= 60 ? "Very Likely" : "Likely"
 
   return {
     score: s,
@@ -161,7 +318,7 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
     ? new Date(job.posted).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
     : ""
   const scoreColor = job.score >= 80 ? "#00D68F" : job.score >= 60 ? "#0057FF" : job.score >= 40 ? "#FF6B35" : "#9CA3B8"
-  const scoreLabel = job.likelihood || (job.score >= 80 ? "Confirmed" : job.score >= 60 ? "Very Likely" : job.score >= 40 ? "Likely" : "Possible")
+  const scoreLabel = job.likelihood || (job.score >= 80 ? "Confirmed" : job.score >= 60 ? "Very Likely" : "Likely")
 
   return (
     <div style={{
