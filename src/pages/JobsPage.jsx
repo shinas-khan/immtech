@@ -147,6 +147,62 @@ async function batchCheckSponsors(employers) {
   return results
 }
 
+// Fetch full job description from Reed detail endpoint
+async function fetchReedFullDesc(jobId) {
+  try {
+    const id = jobId.replace("reed_", "")
+    const params = new URLSearchParams({ jobId: id })
+    const r = await fetch("https://uk-visa-jobs-six.vercel.app/api/reed-detail?" + params)
+    if (!r.ok) return null
+    const data = await r.json()
+    return data.jobDescription || null
+  } catch { return null }
+}
+
+// Fetch full description for Adzuna jobs by scraping the redirect URL
+// via our Vercel proxy (avoids CORS and parses the HTML server-side)
+async function fetchAdzunaFullDesc(jobUrl) {
+  try {
+    if (!jobUrl || jobUrl === "#") return null
+    const params = new URLSearchParams({ url: jobUrl })
+    const r = await fetch("/api/scrape-desc?" + params)
+    if (!r.ok) return null
+    const data = await r.json()
+    return data.description || null
+  } catch { return null }
+}
+
+// Enrich ALL jobs with full descriptions before scoring
+// Reed: use their API detail endpoint
+// Adzuna: use our scrape proxy
+async function enrichReedDescriptions(jobs) {
+  // Reed jobs - use API
+  const reedJobs = jobs.filter(j => j.source === "Reed")
+  for (let i = 0; i < reedJobs.length; i += 5) {
+    const batch = reedJobs.slice(i, i + 5)
+    await Promise.all(batch.map(async (job) => {
+      const full = await fetchReedFullDesc(job.id)
+      if (full && full.length > (job.description || "").length) {
+        job.description = full
+      }
+    }))
+  }
+
+  // Adzuna jobs - scrape the redirect URL
+  const adzunaJobs = jobs.filter(j => j.source === "Adzuna")
+  for (let i = 0; i < adzunaJobs.length; i += 5) {
+    const batch = adzunaJobs.slice(i, i + 5)
+    await Promise.all(batch.map(async (job) => {
+      const full = await fetchAdzunaFullDesc(job.url)
+      if (full && full.length > (job.description || "").length) {
+        job.description = full
+      }
+    }))
+  }
+
+  return jobs
+}
+
 // 
 // SPONSORSHIP SCORING  Fixed & Balanced
 //
@@ -207,6 +263,21 @@ const HARD_REJECT_KW = [
   "we are unable to offer sponsorship",
   "we do not provide sponsorship",
   "unable to offer sponsorship for this role",
+  // Additional phrases we've seen in real job listings
+  "we are unable to accept applications from candidates who require",
+  "unable to accept applications from candidates who require visa",
+  "we cannot accept applications from anyone who requires sponsorship",
+  "not able to accept applications from candidates requiring",
+  "applications from candidates who require visa sponsorship cannot",
+  "we regret that we are unable to offer visa sponsorship",
+  "unfortunately we are unable to offer sponsorship",
+  "we are sorry but we cannot offer visa sponsorship",
+  "sponsorship is not available for this position",
+  "this role is not on the shortage occupation list",
+  "must be registered with the gdc",
+  "must be registered with the nmc without sponsorship",
+  "locum only",
+  "locum basis",
   // Scam indicators only
   "self sponsored",
   "self-sponsored",
@@ -586,6 +657,10 @@ export default function JobsPage() {
         if (seen.has(key)) return false
         seen.add(key); return true
       })
+
+      // Enrich Reed jobs with full descriptions before scoring
+      // This catches rejection phrases buried deeper in the text
+      await enrichReedDescriptions(rawJobs)
 
       // Verify every employer against the Home Office sponsor register
       const sponsorMap = await batchCheckSponsors(rawJobs.map(j => j.employer))

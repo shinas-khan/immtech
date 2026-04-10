@@ -95,7 +95,7 @@ export default function Nav() {
           </div>
 
           {/* Mobile hamburger */}
-          <button onClick={() => setMenuOpen(o => !o)} className="nav-mobile" style={{ background: menuOpen ? "#F0F5FF" : "none", border: "1.5px solid " + (menuOpen ? "#0057FF30" : "#E8EEFF"), borderRadius: 9, padding: "7px 10px", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center" }}>
+          <button onClick={() => setMenuOpen(o => !o)} className="nav-hamburger" style={{ background: menuOpen ? "#F0F5FF" : "none", border: "1.5px solid " + (menuOpen ? "#0057FF30" : "#E8EEFF"), borderRadius: 9, padding: "7px 10px", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: 20, height: 2, background: menuOpen ? "#0057FF" : "#4B5675", borderRadius: 2, transition: "all 0.25s", transform: menuOpen ? "rotate(45deg) translate(4px, 4px)" : "none" }} />
             <div style={{ width: 20, height: 2, background: menuOpen ? "#0057FF" : "#4B5675", borderRadius: 2, transition: "all 0.25s", opacity: menuOpen ? 0 : 1 }} />
             <div style={{ width: 20, height: 2, background: menuOpen ? "#0057FF" : "#4B5675", borderRadius: 2, transition: "all 0.25s", transform: menuOpen ? "rotate(-45deg) translate(4px, -4px)" : "none" }} />
@@ -104,7 +104,7 @@ export default function Nav() {
 
         {/* Mobile dropdown menu */}
         {menuOpen && (
-          <div style={{ background: "#fff", borderTop: "1px solid #E8EEFF", padding: "12px 5% 20px" }} className="nav-mobile">
+          <div style={{ background: "#fff", borderTop: "1px solid #E8EEFF", padding: "12px 5% 20px" }} className="nav-mobile-menu">
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {links.map(l => (
                 <div key={l.path} onClick={() => navigate(l.path)} style={{ padding: "14px 16px", borderRadius: 12, background: isActive(l.path) ? "#0057FF0D" : "transparent", color: isActive(l.path) ? "#0057FF" : "#0A0F1E", fontWeight: isActive(l.path) ? 700 : 500, fontSize: 16, cursor: "pointer" }}>
@@ -133,10 +133,12 @@ export default function Nav() {
       </nav>
       <style>{`
         .nav-desktop { display: flex; }
-        .nav-mobile { display: none; }
+        .nav-hamburger { display: none; }
+        .nav-mobile-menu { display: none; }
         @media (max-width: 768px) {
           .nav-desktop { display: none !important; }
-          .nav-mobile { display: flex !important; }
+          .nav-hamburger { display: flex !important; }
+          .nav-mobile-menu { display: block !important; }
         }
       `}</style>
     </>
