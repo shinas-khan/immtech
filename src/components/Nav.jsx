@@ -23,10 +23,16 @@ export default function Nav() {
 
   useEffect(() => { setMenuOpen(false) }, [location.pathname])
 
+  useEffect(() => {
+    const close = () => { if (window.innerWidth > 768) setMenuOpen(false) }
+    window.addEventListener("resize", close)
+    return () => window.removeEventListener("resize", close)
+  }, [])
+
   const handleSignOut = async () => { await supabase.auth.signOut(); navigate("/") }
   const isActive = (path) => location.pathname === path
 
-  // Logo click — go to home AND scroll to top
+  // Logo click  go to home AND scroll to top
   const handleLogoClick = () => {
     if (location.pathname === "/") {
       window.scrollTo({ top: 0, behavior: "smooth" })
@@ -47,7 +53,7 @@ export default function Nav() {
       <nav style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "rgba(255,255,255,0.97)", backdropFilter: "blur(20px)", borderBottom: "1px solid #E8EEFF", boxShadow: scrolled ? "0 2px 20px rgba(0,57,255,0.08)" : "none", transition: "box-shadow 0.3s" }}>
         <div style={{ maxWidth: 1140, margin: "0 auto", height: 68, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 5%" }}>
 
-          {/* Logo — scrolls to top on click */}
+          {/* Logo  scrolls to top on click */}
           <div onClick={handleLogoClick} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flexShrink: 0 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #0057FF, #00C2FF)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 14px #0057FF30" }}>
               <span style={{ color: "#fff", fontWeight: 900, fontSize: 13 }}>IT</span>
@@ -69,7 +75,7 @@ export default function Nav() {
           <div style={{ display: "flex", gap: 10, alignItems: "center" }} className="nav-desktop">
             {user ? (
               <>
-                <span onClick={() => navigate("/notifications")} style={{ fontSize: 20, cursor: "pointer" }} title="Alerts">🔔</span>
+                <span onClick={() => navigate("/notifications")} style={{ fontSize: 20, cursor: "pointer" }} title="Alerts"></span>
                 <div onClick={() => navigate("/profile")} style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg, #0057FF, #00C2FF)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 14, cursor: "pointer" }}>
                   {user.email?.[0]?.toUpperCase() || "U"}
                 </div>
@@ -89,7 +95,7 @@ export default function Nav() {
           </div>
 
           {/* Mobile hamburger */}
-          <button onClick={() => setMenuOpen(o => !o)} className="nav-mobile" style={{ background: menuOpen ? "#F0F5FF" : "none", border: `1.5px solid ${menuOpen ? "#0057FF30" : "#E8EEFF"}`, borderRadius: 9, padding: "7px 10px", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center" }}>
+          <button onClick={() => setMenuOpen(o => !o)} className="nav-mobile" style={{ background: menuOpen ? "#F0F5FF" : "none", border: "1.5px solid " + (menuOpen ? "#0057FF30" : "#E8EEFF"), borderRadius: 9, padding: "7px 10px", cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: 20, height: 2, background: menuOpen ? "#0057FF" : "#4B5675", borderRadius: 2, transition: "all 0.25s", transform: menuOpen ? "rotate(45deg) translate(4px, 4px)" : "none" }} />
             <div style={{ width: 20, height: 2, background: menuOpen ? "#0057FF" : "#4B5675", borderRadius: 2, transition: "all 0.25s", opacity: menuOpen ? 0 : 1 }} />
             <div style={{ width: 20, height: 2, background: menuOpen ? "#0057FF" : "#4B5675", borderRadius: 2, transition: "all 0.25s", transform: menuOpen ? "rotate(-45deg) translate(4px, -4px)" : "none" }} />
@@ -112,13 +118,13 @@ export default function Nav() {
                     <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg, #0057FF, #00C2FF)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 12 }}>{user.email?.[0]?.toUpperCase()}</div>
                     My Profile
                   </div>
-                  <div onClick={() => navigate("/notifications")} style={{ padding: "14px 16px", borderRadius: 12, color: "#0A0F1E", fontSize: 16, cursor: "pointer" }}>🔔 Alerts</div>
+                  <div onClick={() => navigate("/notifications")} style={{ padding: "14px 16px", borderRadius: 12, color: "#0A0F1E", fontSize: 16, cursor: "pointer" }}> Alerts</div>
                   <button onClick={handleSignOut} style={{ margin: "8px 16px 0", background: "none", border: "1.5px solid #E8EEFF", color: "#4B5675", borderRadius: 10, padding: "12px", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sign out</button>
                 </>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "8px 0 0" }}>
                   <button onClick={() => navigate("/auth")} style={{ background: "none", border: "1.5px solid #E8EEFF", color: "#0A0F1E", borderRadius: 10, padding: "14px", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Sign in</button>
-                  <button onClick={() => navigate("/onboarding")} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", border: "none", color: "#fff", borderRadius: 10, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 4px 18px #0057FF35" }}>Get Started Free →</button>
+                  <button onClick={() => navigate("/onboarding")} style={{ background: "linear-gradient(135deg, #0057FF, #00C2FF)", border: "none", color: "#fff", borderRadius: 10, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 4px 18px #0057FF35" }}>Get Started Free </button>
                 </div>
               )}
             </div>

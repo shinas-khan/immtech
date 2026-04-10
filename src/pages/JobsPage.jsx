@@ -102,7 +102,6 @@ const NEG_KW = [
   "pyramid",
   "multi-level marketing",
 ]
-const VISA_KW = ["visa sponsorship","sponsor visa","certificate of sponsorship","cos provided","skilled worker visa","tier 2","ukvi","sponsorship available","will sponsor","sponsorship provided","visa support","sponsorship considered","open to sponsorship","visa provided","relocation package","international applicants"]
 
 const ALL_ROLES = ["All Jobs", ...ALL_JOBS]
 const ALL_LOCS = ["Anywhere in UK", ...ALL_LOCATIONS]
@@ -127,11 +126,11 @@ async function checkSponsor(employerName) {
     if (clean.length < 2) return null
     const { data: exact } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", employerName).limit(1)
     if (exact?.[0]) return exact[0]
-    const { data: contains } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", `%${clean}%`).limit(1)
+    const { data: contains } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", "%" + clean + "%").limit(1)
     if (contains?.[0]) return contains[0]
     const firstWord = clean.split(" ")[0]
     if (firstWord.length >= 4) {
-      const { data: partial } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", `${firstWord}%`).limit(1)
+      const { data: partial } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", firstWord + "%").limit(1)
       if (partial?.[0]) return partial[0]
     }
     return null
@@ -148,8 +147,8 @@ async function batchCheckSponsors(employers) {
   return results
 }
 
-// ─────────────────────────────────────────────────────────────
-// SPONSORSHIP SCORING — Fixed & Balanced
+// 
+// SPONSORSHIP SCORING  Fixed & Balanced
 //
 // THE CORE INSIGHT:
 //   Being on the UK Home Office sponsor register IS the signal.
@@ -164,17 +163,17 @@ async function batchCheckSponsors(employers) {
 //   - Both together = highest score (Confirmed tier)
 //   - Only hard-reject on explicit NO-SPONSORSHIP phrases
 //   - Salary check: only reject if salary is definitively stated AND below threshold
-//     (most jobs don't show salary — don't penalise them for that)
+//     (most jobs don't show salary  don't penalise them for that)
 //
 // Score tiers:
 //   80-100 -> "Confirmed"    green  (register + explicit keyword)
 //   60-79  -> "Very Likely"  blue   (register only OR strong keyword)
 //   40-59  -> "Likely"       orange (weaker keyword or unverified employer)
 //   0      -> hidden         (explicit no-sponsorship OR obvious salary mismatch)
-// ─────────────────────────────────────────────────────────────
+// 
 
 // Only reject salary if it's clearly stated AND clearly below threshold
-// Most jobs don't show salary — do NOT filter those out
+// Most jobs don't show salary  do NOT filter those out
 const MIN_SALARY_HARD_REJECT = 20000  // Only reject if clearly below this
 const HEALTH_ROLES = [
   "nurse", "midwife", "paramedic", "pharmacist", "dentist",
@@ -184,7 +183,7 @@ const HEALTH_ROLES = [
 ]
 
 // Only the most explicit, unambiguous no-sponsorship phrases
-// Removed: "must have right to work" — this is standard UK legal boilerplate
+// Removed: "must have right to work"  this is standard UK legal boilerplate
 // that appears in MANY sponsored jobs too. Don't use it to reject.
 const HARD_REJECT_KW = [
   "no sponsorship",
@@ -245,7 +244,7 @@ const CONFIRM_KW = [
   "we are able to sponsor",
 ]
 
-// Weaker visa mentions — suggests awareness of sponsorship
+// Weaker visa mentions  suggests awareness of sponsorship
 const MENTION_KW = [
   "visa sponsorship",
   "skilled worker visa",
@@ -263,7 +262,7 @@ const MENTION_KW = [
 
 function scoreJob(job, sponsorData) {
   const rawDesc = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")
-  const text = (job.title + " " + rawDesc + " " + job.employer).toLowerCase()
+  const text = ((job.title || "") + " " + rawDesc + " " + (job.employer || "")).toLowerCase()
 
   // HARD REJECT 1: Explicit no-sponsorship phrase
   for (const neg of HARD_REJECT_KW) {
@@ -271,7 +270,7 @@ function scoreJob(job, sponsorData) {
   }
 
   // HARD REJECT 2: Salary clearly stated AND clearly below any possible threshold
-  // Only reject if salary_max (the ceiling) is below £20k — definitely not sponsorable
+  // Only reject if salary_max (the ceiling) is below 20k  definitely not sponsorable
   // Do NOT reject if salary is unknown (most jobs don't show it)
   const isHealthRole = HEALTH_ROLES.some(r => text.includes(r))
   if (job.salary_max && job.salary_max > 0 && job.salary_max < MIN_SALARY_HARD_REJECT) {
@@ -286,7 +285,7 @@ function scoreJob(job, sponsorData) {
   const signals = []
 
   // SIGNAL A: Employer on the UK Home Office sponsor register
-  // This is the strongest and most reliable signal — they ARE licensed to sponsor
+  // This is the strongest and most reliable signal  they ARE licensed to sponsor
   if (sponsorData) {
     score += 60
     signals.push({ type: "verified", label: "Gov Verified" })
@@ -324,7 +323,7 @@ function scoreJob(job, sponsorData) {
     signals.push({ type: "salary", label: "Salary eligible" })
   }
 
-  // If score is still 0 — no signal at all — hide the job
+  // If score is still 0  no signal at all  hide the job
   // But note: if employer IS on register, score is already 60 so this won't trigger
   if (score === 0) {
     return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
@@ -348,7 +347,7 @@ function scoreJob(job, sponsorData) {
 
 async function fetchAdzuna(q, loc, page) {
   try {
-    const what = q ? q + " visa sponsorship" : "visa sponsorship uk jobs"
+    var what = q ? q + " visa sponsorship" : "visa sponsorship uk jobs"
     const where = loc && loc !== "Anywhere in UK" ? loc : "UK"
     const params = new URLSearchParams({ app_id: ADZUNA_ID, app_key: ADZUNA_KEY, what, where, results_per_page: 40 })
     const r = await fetch("https://api.adzuna.com/v1/api/jobs/gb/search/" + page + "?" + params)
@@ -367,7 +366,7 @@ async function fetchAdzuna(q, loc, page) {
 
 async function fetchReed(q, loc, page) {
   try {
-    const keywords = q ? q + " visa sponsorship" : "visa sponsorship"
+    var keywords = q ? q + " visa sponsorship" : "visa sponsorship"
     const locationName = loc && loc !== "Anywhere in UK" ? loc : "United Kingdom"
     const params = new URLSearchParams({ keywords, locationName, resultsToTake: 40, resultsToSkip: (page - 1) * 40 })
     const r = await fetch("https://uk-visa-jobs-six.vercel.app/api/reed?" + params)
@@ -387,7 +386,7 @@ async function fetchReed(q, loc, page) {
 function JobCard({ job, onSave, saved, navigate, mob }) {
   const [expanded, setExpanded] = useState(false)
   const salary = job.salary_min || job.salary_max
-    ? `GBP ${(job.salary_min || 0).toLocaleString()}${job.salary_max ? ` - GBP ${job.salary_max.toLocaleString()}` : "+"}`
+    ? "GBP " + (job.salary_min || 0).toLocaleString() + (job.salary_max ? " - GBP " + job.salary_max.toLocaleString() : "+")
     : null
   const posted = job.posted
     ? new Date(job.posted).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
@@ -398,7 +397,7 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
   return (
     <div style={{
       background: "#fff",
-      border: `1.5px solid ${job.verified ? "#00D68F35" : "#E8EEFF"}`,
+      border: "1.5px solid " + (job.verified ? "#00D68F35" : "#E8EEFF"),
       borderRadius: 16,
       padding: mob ? "14px" : "20px 24px",
       transition: "all 0.2s",
@@ -424,7 +423,7 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
                 Fresher Friendly
               </span>
             )}
-            {job.sponsorInfo?.town && (
+            {job.sponsorInfo && job.sponsorInfo.town && (
               <span style={{ background: "#0057FF08", color: "#0057FF", borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 600 }}>
                 {job.sponsorInfo.town}
               </span>
@@ -439,10 +438,10 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
-          <div style={{ background: `${scoreColor}15`, border: `1px solid ${scoreColor}40`, borderRadius: 20, padding: "3px 8px", fontSize: 10, fontWeight: 700, color: scoreColor, whiteSpace: "nowrap" }}>
+          <div style={{ background: scoreColor + "15", border: "1px solid " + scoreColor + "40", borderRadius: 20, padding: "3px 8px", fontSize: 10, fontWeight: 700, color: scoreColor, whiteSpace: "nowrap" }}>
             {scoreLabel} {job.score}%
           </div>
-          <button onClick={() => onSave(job)} style={{ background: saved ? "#0057FF10" : "none", border: `1px solid ${saved ? "#0057FF" : "#E8EEFF"}`, color: saved ? "#0057FF" : "#9CA3B8", borderRadius: 6, padding: "3px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+          <button onClick={() => onSave(job)} style={{ background: saved ? "#0057FF10" : "none", border: "1px solid " + (saved ? "#0057FF" : "#E8EEFF"), color: saved ? "#0057FF" : "#9CA3B8", borderRadius: 6, padding: "3px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             {saved ? "Saved" : "Save"}
           </button>
         </div>
@@ -451,15 +450,15 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
       <div style={{ display: "flex", gap: 10, marginTop: 7, fontSize: 11, color: "#4B5675", flexWrap: "wrap" }}>
         {salary && <span>{salary}</span>}
         {posted && <span>Posted {posted}</span>}
-        {job.sponsorInfo?.route && <span>{job.sponsorInfo.route.split(":")[0]}</span>}
+        {job.sponsorInfo && job.sponsorInfo.route && <span>{job.sponsorInfo.route.split(":")[0]}</span>}
       </div>
 
-      {job.signals?.length > 0 && (
+      {job.signals && job.signals.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
           {job.signals.map((s, i) => {
             const cols = { verified: "#00D68F", rating: "#00D68F", visa: "#0057FF", salary: "#FF6B35" }
             return (
-              <span key={i} style={{ background: `${cols[s.type] || "#888"}12`, color: cols[s.type] || "#888", borderRadius: 4, padding: "2px 6px", fontSize: 10, fontWeight: 600 }}>
+              <span key={i} style={{ background: (cols[s.type] || "#888") + "12", color: cols[s.type] || "#888", borderRadius: 4, padding: "2px 6px", fontSize: 10, fontWeight: 600 }}>
                 {s.label}
               </span>
             )
@@ -594,8 +593,8 @@ export default function JobsPage() {
       // Score all jobs with likelihood tiers - score 0 = filtered out
       let scored = rawJobs.map(j => {
         const sponsorInfo = sponsorMap[j.employer]
-        const { score, likelihood, signals, fresherFriendly, verified } = scoreJob(j, sponsorInfo)
-        return { ...j, score, likelihood, signals, fresherFriendly, verified, sponsorInfo }
+        const result = scoreJob(j, sponsorInfo)
+        return { ...j, score: result.score, likelihood: result.likelihood, signals: result.signals, fresherFriendly: result.fresherFriendly, verified: result.verified, sponsorInfo }
       }).filter(j => j.score > 0)
 
       // Apply user filters
@@ -629,14 +628,14 @@ export default function JobsPage() {
 
   const pillStyle = (active) => ({
     padding: "5px 11px", borderRadius: 100, fontSize: mob ? 11 : 12, fontWeight: 600,
-    cursor: "pointer", border: `1.5px solid ${active ? "#0057FF" : "#E8EEFF"}`,
+    cursor: "pointer", border: "1.5px solid " + (active ? "#0057FF" : "#E8EEFF"),
     background: active ? "#0057FF0D" : "#fff", color: active ? "#0057FF" : "#4B5675",
     transition: "all 0.15s", fontFamily: "inherit", whiteSpace: "nowrap",
   })
 
   const filterPillStyle = (active) => ({
     padding: "6px 12px", borderRadius: 100, fontSize: 12, fontWeight: 600,
-    cursor: "pointer", border: `1.5px solid ${active ? "#0057FF" : "#E8EEFF"}`,
+    cursor: "pointer", border: "1.5px solid " + (active ? "#0057FF" : "#E8EEFF"),
     background: active ? "#0057FF0D" : "#F8FAFF", color: active ? "#0057FF" : "#4B5675",
     transition: "all 0.15s", fontFamily: "inherit",
   })
@@ -692,7 +691,7 @@ export default function JobsPage() {
             {showQ && (
               <div style={dropStyle}>
                 <div style={{ padding: "10px 14px 8px", fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #F8FAFF" }}>
-                  {q ? `${filteredRoles.length} matching roles` : `All ${ALL_ROLES.length - 1} roles`}
+                  {q ? filteredRoles.length + " matching roles" : "All " + (ALL_ROLES.length - 1) + " roles"}
                 </div>
                 {filteredRoles.map(role => (
                   <div key={role}
@@ -724,7 +723,7 @@ export default function JobsPage() {
               {showL && (
                 <div style={dropStyle}>
                   <div style={{ padding: "10px 14px 8px", fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #F8FAFF" }}>
-                    {loc ? `${filteredLocs.length} locations` : `All ${ALL_LOCS.length - 1} UK cities`}
+                    {loc ? filteredLocs.length + " locations" : "All " + (ALL_LOCS.length - 1) + " UK cities"}
                   </div>
                   {filteredLocs.map(city => (
                     <div key={city}
@@ -838,7 +837,7 @@ export default function JobsPage() {
               { label: "Gov Verified", value: stats.verified, color: "#00D68F" },
               { label: "Fresher Friendly", value: stats.fresher, color: "#FF6B35" },
             ].map(s => (
-              <div key={s.label} style={{ background: "#fff", border: `1px solid ${s.color}20`, borderRadius: 10, padding: "7px 12px", display: "flex", alignItems: "center", gap: 6 }}>
+              <div key={s.label} style={{ background: "#fff", border: "1px solid " + s.color + "20", borderRadius: 10, padding: "7px 12px", display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontSize: mob ? 16 : 18, fontWeight: 900, color: s.color }}>{s.value}</span>
                 <span style={{ fontSize: 10, color: "#9CA3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 }}>{s.label}</span>
               </div>
@@ -851,7 +850,7 @@ export default function JobsPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[...Array(5)].map((_, i) => (
               <div key={i} style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", border: "1px solid #E8EEFF", opacity: 1 - i * 0.15 }}>
-                <div style={{ height: 14, background: "#F0F0F0", borderRadius: 4, width: `${55 + i * 8}%`, marginBottom: 10 }} />
+                <div style={{ height: 14, background: "#F0F0F0", borderRadius: 4, width: (55 + i * 8) + "%", marginBottom: 10 }} />
                 <div style={{ height: 11, background: "#F0F0F0", borderRadius: 4, width: "35%" }} />
               </div>
             ))}
@@ -863,7 +862,7 @@ export default function JobsPage() {
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <div style={{ fontSize: 13, color: "#4B5675" }}>
-                Showing {(currentPage - 1) * JOBS_PER_PAGE + 1}&#8211;{Math.min(currentPage * JOBS_PER_PAGE, allJobs.length)} of {allJobs.length} jobs
+                Showing {(currentPage - 1) * JOBS_PER_PAGE + 1}-{Math.min(currentPage * JOBS_PER_PAGE, allJobs.length)} of {allJobs.length} jobs
               </div>
               {loading && <span style={{ fontSize: 12, color: "#0057FF", fontWeight: 600 }}>Updating...</span>}
             </div>
