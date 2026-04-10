@@ -4,19 +4,19 @@ import Nav from "../components/Nav"
 
 const PLANS = [
   {
-    name: "Starter", price: "£99", period: "per month",
+    name: "Starter", price: "99", period: "per month",
     color: "#0057FF", popular: false,
     features: ["Access to candidate database", "5 sponsored job postings", "Basic compliance tracker", "Candidate messaging", "Email support"],
     cta: "Start Free Trial",
   },
   {
-    name: "Growth", price: "£199", period: "per month",
+    name: "Growth", price: "199", period: "per month",
     color: "#00D68F", popular: true,
     features: ["Everything in Starter", "20 sponsored job postings", "Advanced compliance dashboard", "Priority candidate matching", "Visa pipeline management", "Dedicated account manager"],
     cta: "Start Free Trial",
   },
   {
-    name: "Enterprise", price: "£399", period: "per month",
+    name: "Enterprise", price: "399", period: "per month",
     color: "#7C3AED", popular: false,
     features: ["Everything in Growth", "Unlimited job postings", "Immigration paperwork automation", "API access & integrations", "Custom onboarding", "SLA guarantee"],
     cta: "Contact Sales",
@@ -24,19 +24,19 @@ const PLANS = [
 ]
 
 const FEATURES = [
-  { icon: "🌍", title: "Global Talent Database", desc: "Access thousands of verified international candidates actively seeking UK visa sponsorship. Filter by role, experience, nationality and salary expectations.", color: "#0057FF" },
-  { icon: "📋", title: "Sponsor Licence Compliance", desc: "Track your sponsor licence obligations, renewal dates and reporting requirements. Never miss a compliance deadline again.", color: "#00D68F" },
-  { icon: "🤖", title: "AI Candidate Matching", desc: "Our AI matches your job requirements with the most suitable international candidates based on skills, visa eligibility and salary expectations.", color: "#7C3AED" },
-  { icon: "📄", title: "Immigration Paperwork Automation", desc: "Generate Certificate of Sponsorship documents, right to work checks and visa application support automatically.", color: "#FF6B35" },
-  { icon: "📊", title: "Hiring Pipeline Dashboard", desc: "Track every international hire from application to visa approval in one visual pipeline. Know exactly where each candidate stands.", color: "#0099FF" },
-  { icon: "💬", title: "Direct Candidate Messaging", desc: "Message candidates directly through the platform. Schedule interviews, send updates and manage communication in one place.", color: "#FF3B7A" },
+  { icon: "", title: "Global Talent Database", desc: "Access thousands of verified international candidates actively seeking UK visa sponsorship. Filter by role, experience, nationality and salary expectations.", color: "#0057FF" },
+  { icon: "", title: "Sponsor Licence Compliance", desc: "Track your sponsor licence obligations, renewal dates and reporting requirements. Never miss a compliance deadline again.", color: "#00D68F" },
+  { icon: "", title: "AI Candidate Matching", desc: "Our AI matches your job requirements with the most suitable international candidates based on skills, visa eligibility and salary expectations.", color: "#7C3AED" },
+  { icon: "", title: "Immigration Paperwork Automation", desc: "Generate Certificate of Sponsorship documents, right to work checks and visa application support automatically.", color: "#FF6B35" },
+  { icon: "", title: "Hiring Pipeline Dashboard", desc: "Track every international hire from application to visa approval in one visual pipeline. Know exactly where each candidate stands.", color: "#0099FF" },
+  { icon: "", title: "Direct Candidate Messaging", desc: "Message candidates directly through the platform. Schedule interviews, send updates and manage communication in one place.", color: "#FF3B7A" },
 ]
 
 const STATS = [
-  { value: "15,000+", label: "Verified Candidates", icon: "👥" },
-  { value: "47", label: "Countries Represented", icon: "🌍" },
-  { value: "3,500+", label: "Employers Trust Us", icon: "🏢" },
-  { value: "94%", label: "Visa Success Rate", icon: "✅" },
+  { value: "15,000+", label: "Verified Candidates", icon: "" },
+  { value: "47", label: "Countries Represented", icon: "" },
+  { value: "3,500+", label: "Employers Trust Us", icon: "" },
+  { value: "94%", label: "Visa Success Rate", icon: "" },
 ]
 
 const TESTIMONIALS = [
@@ -46,10 +46,10 @@ const TESTIMONIALS = [
 ]
 
 const HOW_IT_WORKS = [
-  { step: "01", title: "Create your employer profile", desc: "Set up your company profile, add your sponsor licence number and tell us what roles you're hiring for.", icon: "🏢" },
-  { step: "02", title: "Post your sponsored roles", desc: "List your visa-sponsored positions and our AI immediately starts matching them to eligible international candidates.", icon: "📝" },
-  { step: "03", title: "Review matched candidates", desc: "Browse AI-matched candidates filtered by skills, experience, nationality and visa eligibility. Message them directly.", icon: "👀" },
-  { step: "04", title: "Hire and sponsor with confidence", desc: "Our compliance tools guide you through the Certificate of Sponsorship process and track every obligation.", icon: "✅" },
+  { step: "01", title: "Create your employer profile", desc: "Set up your company profile, add your sponsor licence number and tell us what roles you're hiring for.", icon: "" },
+  { step: "02", title: "Post your sponsored roles", desc: "List your visa-sponsored positions and our AI immediately starts matching them to eligible international candidates.", icon: "" },
+  { step: "03", title: "Review matched candidates", desc: "Browse AI-matched candidates filtered by skills, experience, nationality and visa eligibility. Message them directly.", icon: "" },
+  { step: "04", title: "Hire and sponsor with confidence", desc: "Our compliance tools guide you through the Certificate of Sponsorship process and track every obligation.", icon: "" },
 ]
 
 export default function EmployersPage() {
@@ -82,13 +82,13 @@ export default function EmployersPage() {
             <span style={{ background: "linear-gradient(90deg, #00D68F, #00C2FF)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>International Talent</span>
           </h1>
           <p style={{ fontSize: 19, color: "rgba(255,255,255,0.78)", lineHeight: 1.8, maxWidth: 580, margin: "0 auto 48px", fontWeight: 400 }}>
-            Connect with thousands of visa-ready international candidates. Manage your sponsor licence compliance and streamline your international hiring — all in one platform.
+            Connect with thousands of visa-ready international candidates. Manage your sponsor licence compliance and streamline your international hiring  all in one platform.
           </p>
           <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
-            <button onClick={() => document.getElementById("contact").scrollIntoView({ behavior: "smooth" })} style={{ background: "#fff", color: "#0057FF", border: "none", borderRadius: 14, padding: "18px 40px", fontSize: 17, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 8px 32px rgba(0,0,0,0.2)", transition: "transform 0.2s" }}
+            <button onClick={() => navigate("/employer/post")} style={{ background: "#fff", color: "#0057FF", border: "none", borderRadius: 14, padding: "18px 40px", fontSize: 17, fontWeight: 800, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 8px 32px rgba(0,0,0,0.2)", transition: "transform 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"}
               onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-            >Start Hiring Globally →</button>
+            >Post a Job </button>
             <button onClick={() => document.getElementById("plans").scrollIntoView({ behavior: "smooth" })} style={{ background: "rgba(255,255,255,0.12)", color: "#fff", border: "2px solid rgba(255,255,255,0.3)", borderRadius: 14, padding: "18px 40px", fontSize: 17, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
               View Pricing
             </button>
@@ -172,7 +172,7 @@ export default function EmployersPage() {
             {TESTIMONIALS.map(t => (
               <div key={t.company} style={{ background: "#F8FAFF", border: "1px solid #E8EEFF", borderRadius: 22, padding: "32px 28px" }}>
                 <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
-                  {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#F59E0B", fontSize: 16 }}>★</span>)}
+                  {[...Array(5)].map((_, i) => <span key={i} style={{ color: "#F59E0B", fontSize: 16 }}></span>)}
                 </div>
                 <p style={{ color: "#4B5675", fontSize: 15, lineHeight: 1.8, margin: "0 0 24px", fontStyle: "italic" }}>"{t.text}"</p>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -181,7 +181,7 @@ export default function EmployersPage() {
                   </div>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, color: "#0A0F1E" }}>{t.name}</div>
-                    <div style={{ fontSize: 12, color: "#9CA3B8", marginTop: 2 }}>{t.role} · {t.company}</div>
+                    <div style={{ fontSize: 12, color: "#9CA3B8", marginTop: 2 }}>{t.role}  {t.company}</div>
                   </div>
                 </div>
               </div>
@@ -201,7 +201,7 @@ export default function EmployersPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
             {PLANS.map(p => (
               <div key={p.name} style={{ background: p.popular ? "linear-gradient(155deg, #0057FF, #0090FF)" : "#fff", border: p.popular ? "none" : "1px solid #E8EEFF", borderRadius: 24, padding: "36px 30px", transform: p.popular ? "scale(1.05)" : "scale(1)", boxShadow: p.popular ? "0 24px 64px #0057FF28" : "none", position: "relative" }}>
-                {p.popular && <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: "#00D68F", color: "#fff", borderRadius: 100, padding: "5px 18px", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>⭐ Most Popular</div>}
+                {p.popular && <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: "#00D68F", color: "#fff", borderRadius: 100, padding: "5px 18px", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}> Most Popular</div>}
                 <div style={{ fontSize: 12, fontWeight: 700, color: p.popular ? "rgba(255,255,255,0.55)" : "#9CA3B8", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.8 }}>{p.name}</div>
                 <div style={{ marginBottom: 24 }}>
                   <span style={{ fontSize: 46, fontWeight: 900, letterSpacing: -2, color: p.popular ? "#fff" : "#0A0F1E" }}>{p.price}</span>
@@ -210,12 +210,12 @@ export default function EmployersPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
                   {p.features.map(f => (
                     <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ color: p.popular ? "#00D68F" : p.color, fontSize: 13, fontWeight: 800 }}>✓</span>
+                      <span style={{ color: p.popular ? "#00D68F" : p.color, fontSize: 13, fontWeight: 800 }}></span>
                       <span style={{ fontSize: 14, color: p.popular ? "rgba(255,255,255,0.82)" : "#4B5675" }}>{f}</span>
                     </div>
                   ))}
                 </div>
-                <button onClick={() => document.getElementById("contact").scrollIntoView({ behavior: "smooth" })} style={{ width: "100%", background: p.popular ? "#fff" : `${p.color}10`, color: p.popular ? "#0057FF" : p.color, border: p.popular ? "none" : `1.5px solid ${p.color}28`, borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                <button onClick={() => navigate("/employer/post")} style={{ width: "100%", background: p.popular ? "#fff" : `${p.color}10`, color: p.popular ? "#0057FF" : p.color, border: p.popular ? "none" : `1.5px solid ${p.color}28`, borderRadius: 12, padding: "14px", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                   {p.cta}
                 </button>
               </div>
@@ -239,7 +239,7 @@ export default function EmployersPage() {
 
           {submitted ? (
             <div style={{ textAlign: "center", background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 20, padding: "60px 40px" }}>
-              <div style={{ fontSize: 56, marginBottom: 20 }}>🎉</div>
+              <div style={{ fontSize: 56, marginBottom: 20 }}></div>
               <h3 style={{ fontSize: 24, fontWeight: 900, color: "#0A0F1E", marginBottom: 12 }}>We'll be in touch soon!</h3>
               <p style={{ color: "#4B5675", fontSize: 16 }}>Our team will contact you within 24 hours to set up your employer account.</p>
             </div>
@@ -269,10 +269,10 @@ export default function EmployersPage() {
                 />
               </div>
               <button onClick={() => setSubmitted(true)} style={{ width: "100%", background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 6px 24px #0057FF35" }}>
-                Get Started →
+                Get Started 
               </button>
               <p style={{ textAlign: "center", color: "#9CA3B8", fontSize: 13, marginTop: 16 }}>
-                Free 14-day trial · No credit card required · Setup in under 10 minutes
+                Free 14-day trial  No credit card required  Setup in under 10 minutes
               </p>
             </div>
           )}
@@ -296,7 +296,7 @@ export default function EmployersPage() {
               >{l}</span>
             ))}
           </div>
-          <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 13 }}>© 2025 IMMTECH</span>
+          <span style={{ color: "rgba(255,255,255,0.28)", fontSize: 13 }}> 2025 IMMTECH</span>
         </div>
       </footer>
     </div>
