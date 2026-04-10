@@ -316,14 +316,31 @@ export default function JobsPage() {
     try {
       const cleanLoc = searchLoc && searchLoc !== "Anywhere in UK" ? searchLoc : ""
 
-      // Fetch 3 pages from each source simultaneously for maximum results
-      const fetches = await Promise.allSettled([
-        fetchReed(searchQ, cleanLoc, 1),   fetchAdzuna(searchQ, cleanLoc, 1),
-        fetchReed(searchQ, cleanLoc, 2),   fetchAdzuna(searchQ, cleanLoc, 2),
-        fetchReed(searchQ, cleanLoc, 3),   fetchAdzuna(searchQ, cleanLoc, 3),
+      // Fetch from 3 sources simultaneously:
+      // 1+2. Reed & Adzuna general search (3 pages each)
+      // 3. Employer-targeted search via our top known sponsors list
+      const empParams = new URLSearchParams()
+      if (searchQ) empParams.set("role", searchQ)
+      if (cleanLoc) empParams.set("loc", cleanLoc)
+
+      const [fetches, empRes] = await Promise.allSettled([
+        Promise.allSettled([
+          fetchReed(searchQ, cleanLoc, 1),   fetchAdzuna(searchQ, cleanLoc, 1),
+          fetchReed(searchQ, cleanLoc, 2),   fetchAdzuna(searchQ, cleanLoc, 2),
+          fetchReed(searchQ, cleanLoc, 3),   fetchAdzuna(searchQ, cleanLoc, 3),
+        ]),
+        fetch("/api/employer-jobs?" + empParams).then(r => r.ok ? r.json() : { jobs: [] }).catch(() => ({ jobs: [] })),
       ])
+
       let rawJobs = []
-      for (const r of fetches) { if (r.status === "fulfilled") rawJobs.push(...r.value) }
+      // Merge general search results
+      if (fetches.status === "fulfilled") {
+        for (const r of fetches.value) { if (r.status === "fulfilled") rawJobs.push(...r.value) }
+      }
+      // Merge employer-targeted results
+      if (empRes.status === "fulfilled" && empRes.value.jobs) {
+        rawJobs.push(...empRes.value.jobs)
+      }
 
       if (rawJobs.length === 0) {
         setError("No results found. Try a different search.")
