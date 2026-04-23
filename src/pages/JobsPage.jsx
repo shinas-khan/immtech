@@ -595,83 +595,145 @@ export default function JobsPage() {
     try {
       const cleanLoc = searchLoc && searchLoc !== "Anywhere in UK" ? searchLoc : ""
 
-      // Direct jobs from Supabase + Reed pages 1-3 + Adzuna pages 1-3 simultaneously
-      let directQuery = supabase.from("direct_jobs")
-        .select("*").eq("status", "active")
-        .order("created_at", { ascending: false }).limit(20)
+      //  STEP 1: Read direct employer jobs (always fresh, always first) 
+      let directQuery = supabase
+        .from("direct_jobs")
+        .select("*")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(20)
       if (searchQ) directQuery = directQuery.ilike("title", "%" + searchQ + "%")
       if (cleanLoc) directQuery = directQuery.ilike("location", "%" + cleanLoc + "%")
 
-      const [directRes, r1, a1, r2, a2, r3, a3, j1, j2] = await Promise.allSettled([
-        directQuery,
-        fetchReed(searchQ, cleanLoc, 1),
-        fetchAdzuna(searchQ, cleanLoc, 1),
-        fetchReed(searchQ, cleanLoc, 2),
-        fetchAdzuna(searchQ, cleanLoc, 2),
-        fetchReed(searchQ, cleanLoc, 3),
-        fetchAdzuna(searchQ, cleanLoc, 3),
-        fetchJooble(searchQ, cleanLoc, 1),
-        fetchJooble(searchQ, cleanLoc, 2),
-      ])
+      //  STEP 2: Read from Supabase cache (instant - no API calls) 
+      let cacheQuery = supabase
+        .from("cached_jobs")
+        .select("*")
+        .gt("expires_at", new Date().toISOString())
+        .order("score", { ascending: false })
+        .limit(200)
 
+      if (searchQ) {
+        cacheQuery = cacheQuery.or(
+          "title.ilike.%" + searchQ + "%,employer.ilike.%" + searchQ + "%"
+        )
+      }
+      if (cleanLoc) {
+        cacheQuery = cacheQuery.ilike("location", "%" + cleanLoc + "%")
+      }
+
+      // Both queries run simultaneously
+      const [directRes, cacheRes] = await Promise.all([directQuery, cacheQuery])
+
+      //  Map direct employer jobs 
       let directJobs = []
-      if (directRes.status === "fulfilled" && directRes.value.data) {
-        directJobs = directRes.value.data.map(j => ({
-          id: "direct_" + j.id, source: "Direct",
-          title: j.title || "", employer: j.employer_name || "",
-          location: j.location || "", salary_min: j.salary_min,
+      if (directRes.data && directRes.data.length > 0) {
+        directJobs = directRes.data.map(j => ({
+          id: "direct_" + j.id,
+          source: "Direct",
+          title: j.title || "",
+          employer: j.employer_name || "",
+          location: j.location || "",
+          salary_min: j.salary_min,
           salary_max: j.salary_max,
-          description: (j.description || "") + " " + (j.requirements || "") + " " + (j.benefits || ""),
-          url: j.url || "#", posted: j.created_at, full_time: j.job_type === "Full-time",
-          score: 95, likelihood: "Confirmed", verified: !!j.sponsor_verified,
+          description: (j.description || "") + " " + (j.requirements || ""),
+          url: j.url || "#",
+          posted: j.created_at,
+          full_time: j.job_type === "Full-time",
+          score: 95,
+          likelihood: "Confirmed",
+          verified: !!j.sponsor_verified,
           signals: [
             { type: "verified", label: "Direct from Employer" },
             j.sponsor_verified ? { type: "rating", label: "Gov Verified" } : null,
             { type: "visa", label: j.visa_route || "Skilled Worker" },
           ].filter(Boolean),
           fresherFriendly: !!j.is_new_entrant,
-          sponsorInfo: j.sponsor_verified ? { organisation_name: j.organisation_name, rating: j.sponsor_rating, route: j.sponsor_route } : null,
+          sponsorInfo: j.sponsor_verified
+            ? { organisation_name: j.organisation_name, rating: j.sponsor_rating, route: j.sponsor_route }
+            : null,
         }))
       }
 
-      let rawJobs = []
-      for (const res of [r1, a1, r2, a2, r3, a3, j1, j2]) {
-        if (res.status === "fulfilled" && Array.isArray(res.value)) rawJobs.push(...res.value)
+      //  Map cached API jobs 
+      let cachedJobs = []
+      if (cacheRes.data && cacheRes.data.length > 0) {
+        cachedJobs = cacheRes.data.map(j => ({
+          id: j.id,
+          source: j.source,
+          title: j.title || "",
+          employer: j.employer || "",
+          location: j.location || "",
+          salary_min: j.salary_min,
+          salary_max: j.salary_max,
+          description: j.description || "",
+          url: j.url || "#",
+          posted: j.posted,
+          full_time: j.full_time,
+          score: newEntrant ? Math.max(j.score, j.salary_min >= 33400 ? j.score : j.score - 10) : j.score,
+          likelihood: j.likelihood || "Likely",
+          verified: !!j.verified,
+          signals: Array.isArray(j.signals) ? j.signals : [],
+          fresherFriendly: !!j.fresher_friendly,
+          sponsorInfo: j.verified
+            ? { organisation_name: j.employer, rating: j.sponsor_rating, route: j.sponsor_route }
+            : null,
+        }))
+
+        // Apply new entrant salary filter from cache
+        if (newEntrant) {
+          cachedJobs = cachedJobs.filter(j =>
+            !j.salary_max || j.salary_max >= 33400
+          )
+        }
       }
 
-      const seen = new Set()
-      rawJobs = rawJobs.filter(j => {
-        const key = (j.title || "").toLowerCase().slice(0, 30) + "|" + (j.employer || "").toLowerCase()
-        if (seen.has(key)) return false
-        seen.add(key); return true
-      })
+      //  If cache is empty, fall back to live APIs 
+      if (cachedJobs.length === 0 && directJobs.length === 0) {
+        const [r1, a1, r2, a2, j1] = await Promise.allSettled([
+          fetchReed(searchQ, cleanLoc, 1),
+          fetchAdzuna(searchQ, cleanLoc, 1),
+          fetchReed(searchQ, cleanLoc, 2),
+          fetchAdzuna(searchQ, cleanLoc, 2),
+          fetchJooble(searchQ, cleanLoc, 1),
+        ])
+        let rawJobs = []
+        for (const res of [r1, a1, r2, a2, j1]) {
+          if (res.status === "fulfilled" && Array.isArray(res.value)) rawJobs.push(...res.value)
+        }
+        const seen = new Set()
+        rawJobs = rawJobs.filter(j => {
+          const key = (j.title || "").toLowerCase().slice(0, 25) + "|" + (j.employer || "").toLowerCase()
+          if (seen.has(key)) return false
+          seen.add(key); return true
+        })
+        const sponsorMap = await batchCheckSponsors(rawJobs.slice(0, 60).map(j => j.employer))
+        cachedJobs = rawJobs.map(j => {
+          const sponsorInfo = sponsorMap[j.employer]
+          const result = scoreJob(j, sponsorInfo, newEntrant)
+          return { ...j, score: result.score, likelihood: result.likelihood, signals: result.signals, fresherFriendly: result.fresherFriendly, verified: result.verified, sponsorInfo }
+        }).filter(j => j.score > 0)
+      }
 
-      const sponsorMap = await batchCheckSponsors(rawJobs.slice(0, 60).map(j => j.employer))
+      //  Merge and filter 
+      let allJobs = [...directJobs, ...cachedJobs]
 
-      let scored = rawJobs.map(j => {
-        const sponsorInfo = sponsorMap[j.employer]
-        const result = scoreJob(j, sponsorInfo, newEntrant)
-        return { ...j, score: result.score, likelihood: result.likelihood, signals: result.signals, fresherFriendly: result.fresherFriendly, verified: result.verified, sponsorInfo }
-      }).filter(j => j.score > 0)
-
-      let allScored = [...directJobs, ...scored]
-
-      if (allScored.length === 0) {
+      if (allJobs.length === 0) {
         setError("No verified sponsored jobs found. Try a different search.")
         setLoading(false); return
       }
 
-      if (fresherOnly) allScored = allScored.filter(j => j.fresherFriendly)
-      if (verifiedOnly) allScored = allScored.filter(j => j.verified)
-      if (filters.jobType === "Full-time") allScored = allScored.filter(j => j.full_time === true)
-      if (filters.jobType === "Part-time") allScored = allScored.filter(j => j.full_time === false)
-      if (filters.salaryMin) allScored = allScored.filter(j => (j.salary_min || 0) >= parseInt(filters.salaryMin))
-      if (filters.salaryMax) allScored = allScored.filter(j => (j.salary_max || 999999) <= parseInt(filters.salaryMax))
-      if (filters.source === "Reed") allScored = allScored.filter(j => j.source === "Reed")
-      if (filters.source === "Adzuna") allScored = allScored.filter(j => j.source === "Adzuna")
-      if (filters.source === "Jooble") allScored = allScored.filter(j => j.source === "Jooble")
+      if (fresherOnly) allJobs = allJobs.filter(j => j.fresherFriendly)
+      if (verifiedOnly) allJobs = allJobs.filter(j => j.verified)
+      if (filters.jobType === "Full-time") allJobs = allJobs.filter(j => j.full_time === true)
+      if (filters.jobType === "Part-time") allJobs = allJobs.filter(j => j.full_time === false)
+      if (filters.salaryMin) allJobs = allJobs.filter(j => (j.salary_min || 0) >= parseInt(filters.salaryMin))
+      if (filters.salaryMax) allJobs = allJobs.filter(j => (j.salary_max || 999999) <= parseInt(filters.salaryMax))
+      if (filters.source === "Reed") allJobs = allJobs.filter(j => j.source === "Reed")
+      if (filters.source === "Adzuna") allJobs = allJobs.filter(j => j.source === "Adzuna")
+      if (filters.source === "Jooble") allJobs = allJobs.filter(j => j.source === "Jooble")
 
-      allScored.sort((a, b) => {
+      allJobs.sort((a, b) => {
         if (a.source === "Direct" && b.source !== "Direct") return -1
         if (a.source !== "Direct" && b.source === "Direct") return 1
         if (a.verified && !b.verified) return -1
@@ -681,7 +743,7 @@ export default function JobsPage() {
         return b.score - a.score
       })
 
-      setAllJobs(allScored)
+      setAllJobs(allJobs)
       setSearched(true)
     } catch (err) {
       setError("Search failed. Please try again.")
