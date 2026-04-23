@@ -161,6 +161,19 @@ function scoreJob(job) {
   return { score: s, likelihood, signals, fresher_friendly, verified: !!job.sponsor_verified }
 }
 
+function parseDate(raw) {
+  if (!raw) return null
+  try {
+    // Handle DD/MM/YYYY format from Reed
+    if (typeof raw === "string" && raw.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+      const [d, m, y] = raw.split("/")
+      return new Date(y + "-" + m + "-" + d).toISOString()
+    }
+    const d = new Date(raw)
+    return isNaN(d.getTime()) ? null : d.toISOString()
+  } catch { return null }
+}
+
 async function fetchReed(keywords, page) {
   try {
     const params = new URLSearchParams({
@@ -181,7 +194,7 @@ async function fetchReed(keywords, page) {
       salary_max: j.maximumSalary || null,
       description: j.jobDescription || "",
       url: j.jobUrl || "#",
-      posted: j.date || null,
+      posted: parseDate(j.date),
       full_time: j.fullTime || null,
     }))
   } catch { return [] }
@@ -203,11 +216,11 @@ async function fetchAdzuna(keywords, page) {
       title: j.title || "",
       employer: (j.company && j.company.display_name) || "",
       location: (j.location && j.location.display_name) || "",
-      salary_min: j.salary_min || null,
-      salary_max: j.salary_max || null,
+      salary_min: j.salary_min ? Math.floor(j.salary_min) : null,
+      salary_max: j.salary_max ? Math.floor(j.salary_max) : null,
       description: j.description || "",
       url: j.redirect_url || "#",
-      posted: j.created || null,
+      posted: parseDate(j.created),
       full_time: j.contract_time === "full_time",
     }))
   } catch { return [] }
@@ -233,7 +246,7 @@ async function fetchJooble(keywords, page) {
       salary_max: null,
       description: j.snippet || "",
       url: j.link || "#",
-      posted: j.updated || null,
+      posted: parseDate(j.updated),
       full_time: null,
     }))
   } catch { return [] }
@@ -325,11 +338,11 @@ export default async function handler(req, res) {
           title: j.title,
           employer: j.employer,
           location: j.location,
-          salary_min: j.salary_min,
-          salary_max: j.salary_max,
+          salary_min: j.salary_min ? Math.floor(j.salary_min) : null,
+          salary_max: j.salary_max ? Math.floor(j.salary_max) : null,
           description: (j.description || "").slice(0, 2000),
           url: j.url,
-          posted: j.posted,
+          posted: j.posted ? (typeof j.posted === 'string' && j.posted.match(/^\d{2}\/\d{2}\/\d{4}$/) ? (() => { const [d,m,y] = j.posted.split('/'); return new Date(y+'-'+m+'-'+d).toISOString() })() : j.posted) : null,
           full_time: j.full_time,
           score: j.score,
           likelihood: j.likelihood,
