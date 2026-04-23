@@ -375,6 +375,32 @@ async function fetchAdzuna(q, loc, page) {
   } catch { return [] }
 }
 
+async function fetchJooble(q, loc, page) {
+  try {
+    const params = new URLSearchParams()
+    if (q) params.set("keywords", q + " visa sponsorship uk")
+    else params.set("keywords", "visa sponsorship uk")
+    if (loc) params.set("location", loc)
+    params.set("page", String(page || 1))
+    const r = await fetch("/api/jooble?" + params)
+    if (!r.ok) return []
+    const data = await r.json()
+    return (data.jobs || []).map(j => ({
+      id: j.id || ("jooble_" + Math.random()),
+      source: "Jooble",
+      title: j.title || "",
+      employer: j.employer || "",
+      location: j.location || "UK",
+      salary_min: j.salary_min,
+      salary_max: j.salary_max,
+      description: j.description || "",
+      url: j.url || "#",
+      posted: j.posted,
+      full_time: j.full_time,
+    }))
+  } catch { return [] }
+}
+
 async function fetchReed(q, loc, page) {
   try {
     const keywords = q ? q + " visa sponsorship" : "visa sponsorship"
@@ -565,7 +591,7 @@ export default function JobsPage() {
       if (searchQ) directQuery = directQuery.ilike("title", "%" + searchQ + "%")
       if (cleanLoc) directQuery = directQuery.ilike("location", "%" + cleanLoc + "%")
 
-      const [directRes, r1, a1, r2, a2, r3, a3] = await Promise.allSettled([
+      const [directRes, r1, a1, r2, a2, r3, a3, j1, j2] = await Promise.allSettled([
         directQuery,
         fetchReed(searchQ, cleanLoc, 1),
         fetchAdzuna(searchQ, cleanLoc, 1),
@@ -573,6 +599,8 @@ export default function JobsPage() {
         fetchAdzuna(searchQ, cleanLoc, 2),
         fetchReed(searchQ, cleanLoc, 3),
         fetchAdzuna(searchQ, cleanLoc, 3),
+        fetchJooble(searchQ, cleanLoc, 1),
+        fetchJooble(searchQ, cleanLoc, 2),
       ])
 
       let directJobs = []
@@ -596,7 +624,7 @@ export default function JobsPage() {
       }
 
       let rawJobs = []
-      for (const res of [r1, a1, r2, a2, r3, a3]) {
+      for (const res of [r1, a1, r2, a2, r3, a3, j1, j2]) {
         if (res.status === "fulfilled" && Array.isArray(res.value)) rawJobs.push(...res.value)
       }
 
@@ -630,6 +658,7 @@ export default function JobsPage() {
       if (filters.salaryMax) allScored = allScored.filter(j => (j.salary_max || 999999) <= parseInt(filters.salaryMax))
       if (filters.source === "Reed") allScored = allScored.filter(j => j.source === "Reed")
       if (filters.source === "Adzuna") allScored = allScored.filter(j => j.source === "Adzuna")
+      if (filters.source === "Jooble") allScored = allScored.filter(j => j.source === "Jooble")
 
       allScored.sort((a, b) => {
         if (a.source === "Direct" && b.source !== "Direct") return -1
