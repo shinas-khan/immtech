@@ -270,7 +270,7 @@ const MENTION_KW = [
   "global talent",
 ]
 
-function scoreJob(job, sponsorData) {
+function scoreJob(job, sponsorData, isNewEntrantMode) {
   const rawDesc = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")
   const text = (job.title + " " + rawDesc + " " + job.employer).toLowerCase()
 
@@ -285,11 +285,13 @@ function scoreJob(job, sponsorData) {
   const Z = { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
   const isHealthRole = HEALTH_ROLES.some(r => text.includes(r))
   const isShortageRole = SHORTAGE_ROLES.some(r => text.includes(r))
+  // New entrant rate is GBP 33,400 (vs standard GBP 41,700)
+  const standardMin = isNewEntrantMode ? MIN_SALARY_SHORTAGE : MIN_SALARY_STANDARD
   if (job.salary_max && job.salary_max > 0) {
     if (job.salary_max < 500) return Z
     if (isHealthRole && job.salary_max < MIN_SALARY_HARD_REJECT) return Z
     if (isShortageRole && job.salary_max < MIN_SALARY_SHORTAGE) return Z
-    if (!isHealthRole && !isShortageRole && job.salary_max < MIN_SALARY_STANDARD) return Z
+    if (!isHealthRole && !isShortageRole && job.salary_max < standardMin) return Z
   }
 
   let score = 0
@@ -329,15 +331,23 @@ function scoreJob(job, sponsorData) {
   }
 
   // SIGNAL D: Salary meets or likely meets threshold (positive signal, not required)
-  if (job.salary_min && job.salary_min >= (isHealthRole ? 29000 : 38700)) {
+  const eligibleMin = isHealthRole ? 29000 : (isNewEntrantMode ? MIN_SALARY_SHORTAGE : MIN_SALARY_STANDARD)
+  if (job.salary_min && job.salary_min >= eligibleMin) {
     score += 7
     signals.push({ type: "salary", label: "Salary eligible" })
   }
 
-  // If score is still 0  no signal at all  hide the job
-  // But note: if employer IS on register, score is already 60 so this won't trigger
+  // If score is still 0 - check if it is from Jooble
+  // Jooble already pre-filters by "visa sponsorship" keywords on our behalf
+  // so give Jooble jobs a baseline score of 20 if they have no other signal
+  // This ensures Jooble results show up even with short snippets
   if (score === 0) {
-    return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
+    if (job.source === "Jooble") {
+      score = 20
+      signals.push({ type: "visa", label: "Via Jooble" })
+    } else {
+      return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
+    }
   }
 
   // Fresher check
@@ -539,6 +549,7 @@ export default function JobsPage() {
   const [showL, setShowL] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [fresherOnly, setFresherOnly] = useState(false)
+  const [newEntrant, setNewEntrant] = useState(false)
   const [verifiedOnly, setVerifiedOnly] = useState(false)
   const [filters, setFilters] = useState({ salaryMin: "", salaryMax: "", jobType: "", source: "", sortBy: "Score" })
   const [allJobs, setAllJobs] = useState([])
@@ -639,7 +650,7 @@ export default function JobsPage() {
 
       let scored = rawJobs.map(j => {
         const sponsorInfo = sponsorMap[j.employer]
-        const result = scoreJob(j, sponsorInfo)
+        const result = scoreJob(j, sponsorInfo, newEntrant)
         return { ...j, score: result.score, likelihood: result.likelihood, signals: result.signals, fresherFriendly: result.fresherFriendly, verified: result.verified, sponsorInfo }
       }).filter(j => j.score > 0)
 
@@ -822,6 +833,7 @@ export default function JobsPage() {
         <div style={{ display: "flex", gap: 16, marginBottom: 10, flexWrap: "wrap" }}>
           {[
             { label: "Fresher friendly only", val: fresherOnly, set: () => { setFresherOnly(v => !v); setTimeout(() => doSearch(1, q, loc), 50) }, color: "#FF6B35" },
+            { label: "New Entrant (GBP 33,400+)", val: newEntrant, set: () => { setNewEntrant(v => !v); setTimeout(() => doSearch(1, q, loc), 50) }, color: "#0057FF" },
             { label: "Verified sponsors only", val: verifiedOnly, set: () => { setVerifiedOnly(v => !v); setTimeout(() => doSearch(1, q, loc), 50) }, color: "#00D68F" },
           ].map(t => (
             <div key={t.label} onClick={t.set} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
