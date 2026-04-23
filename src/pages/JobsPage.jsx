@@ -671,48 +671,48 @@ export default function JobsPage() {
       if (reedRes.status === "fulfilled") rawJobs.push(...reedRes.value)
       if (adzRes.status === "fulfilled") rawJobs.push(...adzRes.value)
 
-      if (rawJobs.length === 0) {
-        setError("No results found. Try a different search.")
-        setLoading(false)
-        return
-      }
-
-      // Merge direct jobs (pre-scored) with API jobs (scored above)
-      // Direct jobs always go first
-      const allScored = [...directJobs, ...scored]
-
-      // Deduplicate by title + employer
+      // Deduplicate API jobs by title + employer
       const seen = new Set()
       rawJobs = rawJobs.filter(j => {
-        const key = j.title.toLowerCase().slice(0, 30) + "|" + j.employer.toLowerCase()
+        const key = (j.title || "").toLowerCase().slice(0, 30) + "|" + (j.employer || "").toLowerCase()
         if (seen.has(key)) return false
         seen.add(key); return true
       })
 
-      // Verify every employer against the Home Office sponsor register
-      // Only check sponsors for first 60 jobs - checking 200+ is too slow
+      // Verify employers against Home Office register (first 60 only for speed)
       const jobsToCheck = rawJobs.slice(0, 60)
       const sponsorMap = await batchCheckSponsors(jobsToCheck.map(j => j.employer))
 
-      // Score all jobs with likelihood tiers - score 0 = filtered out
+      // Score API jobs - score 0 = filtered out
       let scored = rawJobs.map(j => {
         const sponsorInfo = sponsorMap[j.employer]
         const result = scoreJob(j, sponsorInfo)
         return { ...j, score: result.score, likelihood: result.likelihood, signals: result.signals, fresherFriendly: result.fresherFriendly, verified: result.verified, sponsorInfo }
       }).filter(j => j.score > 0)
 
-      // Apply user filters
-      if (fresherOnly) scored = scored.filter(j => j.fresherFriendly)
-      if (verifiedOnly) scored = scored.filter(j => j.verified)
-      if (filters.jobType === "Full-time") scored = scored.filter(j => j.full_time === true)
-      if (filters.jobType === "Part-time") scored = scored.filter(j => j.full_time === false)
-      if (filters.salaryMin) scored = scored.filter(j => (j.salary_min || 0) >= parseInt(filters.salaryMin))
-      if (filters.salaryMax) scored = scored.filter(j => (j.salary_max || 999999) <= parseInt(filters.salaryMax))
-      if (filters.source === "Reed") scored = scored.filter(j => j.source === "Reed")
-      if (filters.source === "Adzuna") scored = scored.filter(j => j.source === "Adzuna")
+      // Merge: direct employer jobs first (pre-verified), then scored API jobs
+      let allScored = [...directJobs, ...scored]
 
-      // Sort - verified + high score first
-      scored.sort((a, b) => {
+      if (allScored.length === 0) {
+        setError("No verified sponsored jobs found. Try a different search term.")
+        setLoading(false)
+        return
+      }
+
+      // Apply user filters
+      if (fresherOnly) allScored = allScored.filter(j => j.fresherFriendly)
+      if (verifiedOnly) allScored = allScored.filter(j => j.verified)
+      if (filters.jobType === "Full-time") allScored = allScored.filter(j => j.full_time === true)
+      if (filters.jobType === "Part-time") allScored = allScored.filter(j => j.full_time === false)
+      if (filters.salaryMin) allScored = allScored.filter(j => (j.salary_min || 0) >= parseInt(filters.salaryMin))
+      if (filters.salaryMax) allScored = allScored.filter(j => (j.salary_max || 999999) <= parseInt(filters.salaryMax))
+      if (filters.source === "Reed") allScored = allScored.filter(j => j.source === "Reed")
+      if (filters.source === "Adzuna") allScored = allScored.filter(j => j.source === "Adzuna")
+
+      // Sort - direct employer jobs first, then verified, then by score
+      allScored.sort((a, b) => {
+        if (a.source === "Direct" && b.source !== "Direct") return -1
+        if (a.source !== "Direct" && b.source === "Direct") return 1
         if (a.verified && !b.verified) return -1
         if (!a.verified && b.verified) return 1
         if (filters.sortBy === "Salary") return (b.salary_min || 0) - (a.salary_min || 0)
@@ -720,7 +720,7 @@ export default function JobsPage() {
         return b.score - a.score
       })
 
-      setAllJobs(scored)
+      setAllJobs(allScored)
       setSearched(true)
     } catch (err) {
       setError("Search failed. Please try again.")
