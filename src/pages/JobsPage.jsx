@@ -102,6 +102,7 @@ const NEG_KW = [
   "pyramid",
   "multi-level marketing",
 ]
+const VISA_KW = ["visa sponsorship","sponsor visa","certificate of sponsorship","cos provided","skilled worker visa","tier 2","ukvi","sponsorship available","will sponsor","sponsorship provided","visa support","sponsorship considered","open to sponsorship","visa provided","relocation package","international applicants"]
 
 const ALL_ROLES = ["All Jobs", ...ALL_JOBS]
 const ALL_LOCS = ["Anywhere in UK", ...ALL_LOCATIONS]
@@ -126,11 +127,11 @@ async function checkSponsor(employerName) {
     if (clean.length < 2) return null
     const { data: exact } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", employerName).limit(1)
     if (exact?.[0]) return exact[0]
-    const { data: contains } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", "%" + clean + "%").limit(1)
+    const { data: contains } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", `%${clean}%`).limit(1)
     if (contains?.[0]) return contains[0]
     const firstWord = clean.split(" ")[0]
     if (firstWord.length >= 4) {
-      const { data: partial } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", firstWord + "%").limit(1)
+      const { data: partial } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", `${firstWord}%`).limit(1)
       if (partial?.[0]) return partial[0]
     }
     return null
@@ -140,67 +141,11 @@ async function checkSponsor(employerName) {
 async function batchCheckSponsors(employers) {
   const unique = [...new Set(employers.filter(Boolean))]
   const results = {}
-  for (let i = 0; i < unique.length; i += 15) {
-    const batch = unique.slice(i, i + 15)
+  for (let i = 0; i < unique.length; i += 8) {
+    const batch = unique.slice(i, i + 8)
     await Promise.all(batch.map(async (emp) => { results[emp] = await checkSponsor(emp) }))
   }
   return results
-}
-
-// Fetch full job description from Reed detail endpoint
-async function fetchReedFullDesc(jobId) {
-  try {
-    const id = jobId.replace("reed_", "")
-    const params = new URLSearchParams({ jobId: id })
-    const r = await fetch("https://uk-visa-jobs-six.vercel.app/api/reed-detail?" + params)
-    if (!r.ok) return null
-    const data = await r.json()
-    return data.jobDescription || null
-  } catch { return null }
-}
-
-// Fetch full description for Adzuna jobs by scraping the redirect URL
-// via our Vercel proxy (avoids CORS and parses the HTML server-side)
-async function fetchAdzunaFullDesc(jobUrl) {
-  try {
-    if (!jobUrl || jobUrl === "#") return null
-    const params = new URLSearchParams({ url: jobUrl })
-    const r = await fetch("/api/scrape-desc?" + params)
-    if (!r.ok) return null
-    const data = await r.json()
-    return data.description || null
-  } catch { return null }
-}
-
-// Enrich ALL jobs with full descriptions before scoring
-// Reed: use their API detail endpoint
-// Adzuna: use our scrape proxy
-async function enrichReedDescriptions(jobs) {
-  // Reed jobs - use API
-  const reedJobs = jobs.filter(j => j.source === "Reed")
-  for (let i = 0; i < reedJobs.length; i += 5) {
-    const batch = reedJobs.slice(i, i + 5)
-    await Promise.all(batch.map(async (job) => {
-      const full = await fetchReedFullDesc(job.id)
-      if (full && full.length > (job.description || "").length) {
-        job.description = full
-      }
-    }))
-  }
-
-  // Adzuna jobs - scrape the redirect URL
-  const adzunaJobs = jobs.filter(j => j.source === "Adzuna")
-  for (let i = 0; i < adzunaJobs.length; i += 5) {
-    const batch = adzunaJobs.slice(i, i + 5)
-    await Promise.all(batch.map(async (job) => {
-      const full = await fetchAdzunaFullDesc(job.url)
-      if (full && full.length > (job.description || "").length) {
-        job.description = full
-      }
-    }))
-  }
-
-  return jobs
 }
 
 // 
@@ -230,7 +175,16 @@ async function enrichReedDescriptions(jobs) {
 
 // Only reject salary if it's clearly stated AND clearly below threshold
 // Most jobs don't show salary  do NOT filter those out
-const MIN_SALARY_HARD_REJECT = 20000  // Only reject if clearly below this
+const MIN_SALARY_HARD_REJECT = 29000
+const MIN_SALARY_STANDARD    = 41700
+const MIN_SALARY_SHORTAGE    = 33400
+const SHORTAGE_ROLES = [
+  "teacher", "secondary teacher", "primary teacher",
+  "social worker", "probation officer",
+  "civil engineer", "mechanical engineer", "electrical engineer",
+  "chef", "cook", "butcher",
+]
+
 const HEALTH_ROLES = [
   "nurse", "midwife", "paramedic", "pharmacist", "dentist",
   "physiotherapist", "radiographer", "occupational therapist",
@@ -263,21 +217,6 @@ const HARD_REJECT_KW = [
   "we are unable to offer sponsorship",
   "we do not provide sponsorship",
   "unable to offer sponsorship for this role",
-  // Additional phrases we've seen in real job listings
-  "we are unable to accept applications from candidates who require",
-  "unable to accept applications from candidates who require visa",
-  "we cannot accept applications from anyone who requires sponsorship",
-  "not able to accept applications from candidates requiring",
-  "applications from candidates who require visa sponsorship cannot",
-  "we regret that we are unable to offer visa sponsorship",
-  "unfortunately we are unable to offer sponsorship",
-  "we are sorry but we cannot offer visa sponsorship",
-  "sponsorship is not available for this position",
-  "this role is not on the shortage occupation list",
-  "must be registered with the gdc",
-  "must be registered with the nmc without sponsorship",
-  "locum only",
-  "locum basis",
   // Scam indicators only
   "self sponsored",
   "self-sponsored",
@@ -333,7 +272,7 @@ const MENTION_KW = [
 
 function scoreJob(job, sponsorData) {
   const rawDesc = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")
-  const text = ((job.title || "") + " " + rawDesc + " " + (job.employer || "")).toLowerCase()
+  const text = (job.title + " " + rawDesc + " " + job.employer).toLowerCase()
 
   // HARD REJECT 1: Explicit no-sponsorship phrase
   for (const neg of HARD_REJECT_KW) {
@@ -343,13 +282,14 @@ function scoreJob(job, sponsorData) {
   // HARD REJECT 2: Salary clearly stated AND clearly below any possible threshold
   // Only reject if salary_max (the ceiling) is below 20k  definitely not sponsorable
   // Do NOT reject if salary is unknown (most jobs don't show it)
+  const Z = { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
   const isHealthRole = HEALTH_ROLES.some(r => text.includes(r))
-  if (job.salary_max && job.salary_max > 0 && job.salary_max < MIN_SALARY_HARD_REJECT) {
-    return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
-  }
-  // Daily/hourly rates (tiny numbers that clearly aren't annual)
-  if (job.salary_max && job.salary_max < 500 && job.salary_max > 0) {
-    return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
+  const isShortageRole = SHORTAGE_ROLES.some(r => text.includes(r))
+  if (job.salary_max && job.salary_max > 0) {
+    if (job.salary_max < 500) return Z
+    if (isHealthRole && job.salary_max < MIN_SALARY_HARD_REJECT) return Z
+    if (isShortageRole && job.salary_max < MIN_SALARY_SHORTAGE) return Z
+    if (!isHealthRole && !isShortageRole && job.salary_max < MIN_SALARY_STANDARD) return Z
   }
 
   let score = 0
@@ -418,7 +358,7 @@ function scoreJob(job, sponsorData) {
 
 async function fetchAdzuna(q, loc, page) {
   try {
-    var what = q ? q + " visa sponsorship" : "visa sponsorship uk jobs"
+    const what = q ? q + " visa sponsorship" : "visa sponsorship uk jobs"
     const where = loc && loc !== "Anywhere in UK" ? loc : "UK"
     const params = new URLSearchParams({ app_id: ADZUNA_ID, app_key: ADZUNA_KEY, what, where, results_per_page: 40 })
     const r = await fetch("https://api.adzuna.com/v1/api/jobs/gb/search/" + page + "?" + params)
@@ -437,13 +377,10 @@ async function fetchAdzuna(q, loc, page) {
 
 async function fetchReed(q, loc, page) {
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 8000)
-    var keywords = q ? q + " visa sponsorship" : "visa sponsorship"
+    const keywords = q ? q + " visa sponsorship" : "visa sponsorship"
     const locationName = loc && loc !== "Anywhere in UK" ? loc : "United Kingdom"
     const params = new URLSearchParams({ keywords, locationName, resultsToTake: 40, resultsToSkip: (page - 1) * 40 })
-    const r = await fetch("https://uk-visa-jobs-six.vercel.app/api/reed?" + params, { signal: controller.signal })
-    clearTimeout(timeout)
+    const r = await fetch("https://uk-visa-jobs-six.vercel.app/api/reed?" + params)
     if (!r.ok) return []
     const data = await r.json()
     return (data.results || []).map(j => ({
@@ -460,7 +397,7 @@ async function fetchReed(q, loc, page) {
 function JobCard({ job, onSave, saved, navigate, mob }) {
   const [expanded, setExpanded] = useState(false)
   const salary = job.salary_min || job.salary_max
-    ? "GBP " + (job.salary_min || 0).toLocaleString() + (job.salary_max ? " - GBP " + job.salary_max.toLocaleString() : "+")
+    ? `GBP ${(job.salary_min || 0).toLocaleString()}${job.salary_max ? ` - GBP ${job.salary_max.toLocaleString()}` : "+"}`
     : null
   const posted = job.posted
     ? new Date(job.posted).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
@@ -471,7 +408,7 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
   return (
     <div style={{
       background: "#fff",
-      border: "1.5px solid " + (job.verified ? "#00D68F35" : "#E8EEFF"),
+      border: `1.5px solid ${job.verified ? "#00D68F35" : "#E8EEFF"}`,
       borderRadius: 16,
       padding: mob ? "14px" : "20px 24px",
       transition: "all 0.2s",
@@ -497,7 +434,7 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
                 Fresher Friendly
               </span>
             )}
-            {job.sponsorInfo && job.sponsorInfo.town && (
+            {job.sponsorInfo?.town && (
               <span style={{ background: "#0057FF08", color: "#0057FF", borderRadius: 5, padding: "2px 7px", fontSize: 10, fontWeight: 600 }}>
                 {job.sponsorInfo.town}
               </span>
@@ -512,10 +449,10 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
-          <div style={{ background: scoreColor + "15", border: "1px solid " + scoreColor + "40", borderRadius: 20, padding: "3px 8px", fontSize: 10, fontWeight: 700, color: scoreColor, whiteSpace: "nowrap" }}>
+          <div style={{ background: `${scoreColor}15`, border: `1px solid ${scoreColor}40`, borderRadius: 20, padding: "3px 8px", fontSize: 10, fontWeight: 700, color: scoreColor, whiteSpace: "nowrap" }}>
             {scoreLabel} {job.score}%
           </div>
-          <button onClick={() => onSave(job)} style={{ background: saved ? "#0057FF10" : "none", border: "1px solid " + (saved ? "#0057FF" : "#E8EEFF"), color: saved ? "#0057FF" : "#9CA3B8", borderRadius: 6, padding: "3px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+          <button onClick={() => onSave(job)} style={{ background: saved ? "#0057FF10" : "none", border: `1px solid ${saved ? "#0057FF" : "#E8EEFF"}`, color: saved ? "#0057FF" : "#9CA3B8", borderRadius: 6, padding: "3px 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
             {saved ? "Saved" : "Save"}
           </button>
         </div>
@@ -524,15 +461,15 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
       <div style={{ display: "flex", gap: 10, marginTop: 7, fontSize: 11, color: "#4B5675", flexWrap: "wrap" }}>
         {salary && <span>{salary}</span>}
         {posted && <span>Posted {posted}</span>}
-        {job.sponsorInfo && job.sponsorInfo.route && <span>{job.sponsorInfo.route.split(":")[0]}</span>}
+        {job.sponsorInfo?.route && <span>{job.sponsorInfo.route.split(":")[0]}</span>}
       </div>
 
-      {job.signals && job.signals.length > 0 && (
+      {job.signals?.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
           {job.signals.map((s, i) => {
             const cols = { verified: "#00D68F", rating: "#00D68F", visa: "#0057FF", salary: "#FF6B35" }
             return (
-              <span key={i} style={{ background: (cols[s.type] || "#888") + "12", color: cols[s.type] || "#888", borderRadius: 4, padding: "2px 6px", fontSize: 10, fontWeight: 600 }}>
+              <span key={i} style={{ background: `${cols[s.type] || "#888"}12`, color: cols[s.type] || "#888", borderRadius: 4, padding: "2px 6px", fontSize: 10, fontWeight: 600 }}>
                 {s.label}
               </span>
             )
@@ -621,57 +558,48 @@ export default function JobsPage() {
     try {
       const cleanLoc = searchLoc && searchLoc !== "Anywhere in UK" ? searchLoc : ""
 
-      // Fetch direct employer jobs from Supabase + Reed + Adzuna simultaneously
-      // Direct jobs are 100% verified - shown first always
-      let directQuery = supabase.from("direct_jobs").select("*").eq("status", "active").order("created_at", { ascending: false }).limit(20)
+      // Direct jobs from Supabase + Reed pages 1-3 + Adzuna pages 1-3 simultaneously
+      let directQuery = supabase.from("direct_jobs")
+        .select("*").eq("status", "active")
+        .order("created_at", { ascending: false }).limit(20)
       if (searchQ) directQuery = directQuery.ilike("title", "%" + searchQ + "%")
       if (cleanLoc) directQuery = directQuery.ilike("location", "%" + cleanLoc + "%")
 
-      const [directRes, reedRes, adzRes] = await Promise.allSettled([
+      const [directRes, r1, a1, r2, a2, r3, a3] = await Promise.allSettled([
         directQuery,
         fetchReed(searchQ, cleanLoc, 1),
         fetchAdzuna(searchQ, cleanLoc, 1),
+        fetchReed(searchQ, cleanLoc, 2),
+        fetchAdzuna(searchQ, cleanLoc, 2),
+        fetchReed(searchQ, cleanLoc, 3),
+        fetchAdzuna(searchQ, cleanLoc, 3),
       ])
 
-      // Map direct jobs to same shape as API jobs
       let directJobs = []
       if (directRes.status === "fulfilled" && directRes.value.data) {
         directJobs = directRes.value.data.map(j => ({
-          id: "direct_" + j.id,
-          source: "Direct",
-          title: j.title,
-          employer: j.employer_name,
-          location: j.location,
-          salary_min: j.salary_min,
+          id: "direct_" + j.id, source: "Direct",
+          title: j.title || "", employer: j.employer_name || "",
+          location: j.location || "", salary_min: j.salary_min,
           salary_max: j.salary_max,
-          description: j.description,
-          requirements: j.requirements,
-          benefits: j.benefits,
-          url: j.url || "#",
-          posted: j.created_at,
-          full_time: j.job_type === "Full-time",
-          soc_code: j.soc_code,
-          visa_route: j.visa_route,
-          is_new_entrant: j.is_new_entrant,
-          // Direct jobs are pre-verified - give them top scores
-          score: 95,
-          likelihood: "Confirmed",
-          verified: j.sponsor_verified,
+          description: (j.description || "") + " " + (j.requirements || "") + " " + (j.benefits || ""),
+          url: j.url || "#", posted: j.created_at, full_time: j.job_type === "Full-time",
+          score: 95, likelihood: "Confirmed", verified: !!j.sponsor_verified,
           signals: [
             { type: "verified", label: "Direct from Employer" },
             j.sponsor_verified ? { type: "rating", label: "Gov Verified" } : null,
             { type: "visa", label: j.visa_route || "Skilled Worker" },
           ].filter(Boolean),
-          fresherFriendly: j.is_new_entrant,
+          fresherFriendly: !!j.is_new_entrant,
           sponsorInfo: j.sponsor_verified ? { organisation_name: j.organisation_name, rating: j.sponsor_rating, route: j.sponsor_route } : null,
         }))
       }
 
       let rawJobs = []
-      if (reedRes.status === "fulfilled") rawJobs.push(...reedRes.value)
-      if (adzRes.status === "fulfilled") rawJobs.push(...adzRes.value)
+      for (const res of [r1, a1, r2, a2, r3, a3]) {
+        if (res.status === "fulfilled" && Array.isArray(res.value)) rawJobs.push(...res.value)
+      }
 
-      // Deduplicate API jobs by title + employer
       const seen = new Set()
       rawJobs = rawJobs.filter(j => {
         const key = (j.title || "").toLowerCase().slice(0, 30) + "|" + (j.employer || "").toLowerCase()
@@ -679,27 +607,21 @@ export default function JobsPage() {
         seen.add(key); return true
       })
 
-      // Verify employers against Home Office register (first 60 only for speed)
-      const jobsToCheck = rawJobs.slice(0, 60)
-      const sponsorMap = await batchCheckSponsors(jobsToCheck.map(j => j.employer))
+      const sponsorMap = await batchCheckSponsors(rawJobs.slice(0, 60).map(j => j.employer))
 
-      // Score API jobs - score 0 = filtered out
       let scored = rawJobs.map(j => {
         const sponsorInfo = sponsorMap[j.employer]
         const result = scoreJob(j, sponsorInfo)
         return { ...j, score: result.score, likelihood: result.likelihood, signals: result.signals, fresherFriendly: result.fresherFriendly, verified: result.verified, sponsorInfo }
       }).filter(j => j.score > 0)
 
-      // Merge: direct employer jobs first (pre-verified), then scored API jobs
       let allScored = [...directJobs, ...scored]
 
       if (allScored.length === 0) {
-        setError("No verified sponsored jobs found. Try a different search term.")
-        setLoading(false)
-        return
+        setError("No verified sponsored jobs found. Try a different search.")
+        setLoading(false); return
       }
 
-      // Apply user filters
       if (fresherOnly) allScored = allScored.filter(j => j.fresherFriendly)
       if (verifiedOnly) allScored = allScored.filter(j => j.verified)
       if (filters.jobType === "Full-time") allScored = allScored.filter(j => j.full_time === true)
@@ -709,7 +631,6 @@ export default function JobsPage() {
       if (filters.source === "Reed") allScored = allScored.filter(j => j.source === "Reed")
       if (filters.source === "Adzuna") allScored = allScored.filter(j => j.source === "Adzuna")
 
-      // Sort - direct employer jobs first, then verified, then by score
       allScored.sort((a, b) => {
         if (a.source === "Direct" && b.source !== "Direct") return -1
         if (a.source !== "Direct" && b.source === "Direct") return 1
@@ -724,7 +645,7 @@ export default function JobsPage() {
       setSearched(true)
     } catch (err) {
       setError("Search failed. Please try again.")
-      console.error(err)
+      console.error("doSearch error:", err)
     } finally {
       setLoading(false)
     }
@@ -732,14 +653,14 @@ export default function JobsPage() {
 
   const pillStyle = (active) => ({
     padding: "5px 11px", borderRadius: 100, fontSize: mob ? 11 : 12, fontWeight: 600,
-    cursor: "pointer", border: "1.5px solid " + (active ? "#0057FF" : "#E8EEFF"),
+    cursor: "pointer", border: `1.5px solid ${active ? "#0057FF" : "#E8EEFF"}`,
     background: active ? "#0057FF0D" : "#fff", color: active ? "#0057FF" : "#4B5675",
     transition: "all 0.15s", fontFamily: "inherit", whiteSpace: "nowrap",
   })
 
   const filterPillStyle = (active) => ({
     padding: "6px 12px", borderRadius: 100, fontSize: 12, fontWeight: 600,
-    cursor: "pointer", border: "1.5px solid " + (active ? "#0057FF" : "#E8EEFF"),
+    cursor: "pointer", border: `1.5px solid ${active ? "#0057FF" : "#E8EEFF"}`,
     background: active ? "#0057FF0D" : "#F8FAFF", color: active ? "#0057FF" : "#4B5675",
     transition: "all 0.15s", fontFamily: "inherit",
   })
@@ -795,7 +716,7 @@ export default function JobsPage() {
             {showQ && (
               <div style={dropStyle}>
                 <div style={{ padding: "10px 14px 8px", fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #F8FAFF" }}>
-                  {q ? filteredRoles.length + " matching roles" : "All " + (ALL_ROLES.length - 1) + " roles"}
+                  {q ? `${filteredRoles.length} matching roles` : `All ${ALL_ROLES.length - 1} roles`}
                 </div>
                 {filteredRoles.map(role => (
                   <div key={role}
@@ -827,7 +748,7 @@ export default function JobsPage() {
               {showL && (
                 <div style={dropStyle}>
                   <div style={{ padding: "10px 14px 8px", fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #F8FAFF" }}>
-                    {loc ? filteredLocs.length + " locations" : "All " + (ALL_LOCS.length - 1) + " UK cities"}
+                    {loc ? `${filteredLocs.length} locations` : `All ${ALL_LOCS.length - 1} UK cities`}
                   </div>
                   {filteredLocs.map(city => (
                     <div key={city}
@@ -941,7 +862,7 @@ export default function JobsPage() {
               { label: "Gov Verified", value: stats.verified, color: "#00D68F" },
               { label: "Fresher Friendly", value: stats.fresher, color: "#FF6B35" },
             ].map(s => (
-              <div key={s.label} style={{ background: "#fff", border: "1px solid " + s.color + "20", borderRadius: 10, padding: "7px 12px", display: "flex", alignItems: "center", gap: 6 }}>
+              <div key={s.label} style={{ background: "#fff", border: `1px solid ${s.color}20`, borderRadius: 10, padding: "7px 12px", display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontSize: mob ? 16 : 18, fontWeight: 900, color: s.color }}>{s.value}</span>
                 <span style={{ fontSize: 10, color: "#9CA3B8", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4 }}>{s.label}</span>
               </div>
@@ -954,7 +875,7 @@ export default function JobsPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {[...Array(5)].map((_, i) => (
               <div key={i} style={{ background: "#fff", borderRadius: 16, padding: "20px 24px", border: "1px solid #E8EEFF", opacity: 1 - i * 0.15 }}>
-                <div style={{ height: 14, background: "#F0F0F0", borderRadius: 4, width: (55 + i * 8) + "%", marginBottom: 10 }} />
+                <div style={{ height: 14, background: "#F0F0F0", borderRadius: 4, width: `${55 + i * 8}%`, marginBottom: 10 }} />
                 <div style={{ height: 11, background: "#F0F0F0", borderRadius: 4, width: "35%" }} />
               </div>
             ))}
@@ -966,7 +887,7 @@ export default function JobsPage() {
           <>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <div style={{ fontSize: 13, color: "#4B5675" }}>
-                Showing {(currentPage - 1) * JOBS_PER_PAGE + 1}-{Math.min(currentPage * JOBS_PER_PAGE, allJobs.length)} of {allJobs.length} jobs
+                Showing {(currentPage - 1) * JOBS_PER_PAGE + 1}&#8211;{Math.min(currentPage * JOBS_PER_PAGE, allJobs.length)} of {allJobs.length} jobs
               </div>
               {loading && <span style={{ fontSize: 12, color: "#0057FF", fontWeight: 600 }}>Updating...</span>}
             </div>
