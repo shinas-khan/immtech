@@ -365,23 +365,134 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer style={{ background: "#0A0F1E", borderTop: "1px solid #1E2640", padding: "40px 5%" }}>
-        <div style={{ maxWidth: 1140, margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: "#0057FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ color: "#fff", fontWeight: 900, fontSize: 10 }}>IT</span>
+      <footer style={{ background: "#0A0F1E", padding: "80px 5% 0" }}>
+        <div style={{ maxWidth: 1140, margin: "0 auto" }}>
+
+          {/* Top grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 60, paddingBottom: 60, borderBottom: "1px solid #1E2640" }}>
+
+            {/* Brand column */}
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "#0057FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ color: "#fff", fontWeight: 900, fontSize: 12 }}>IT</span>
+                </div>
+                <span style={{ fontWeight: 900, fontSize: 20, color: "#fff", letterSpacing: -0.8 }}>IMMTECH</span>
+              </div>
+              <p style={{ fontSize: 14, color: "#666", lineHeight: 1.8, marginBottom: 24, maxWidth: 280 }}>
+                The UK's first AI-powered visa sponsorship job platform. Every job verified against the Home Office register of 125,284 licensed sponsors.
+              </p>
+              <div style={{ display: "flex", gap: 12 }}>
+                <a href="https://linkedin.com" target="_blank" rel="noreferrer" style={{ width: 36, height: 36, borderRadius: 8, background: "#1E2640", display: "flex", alignItems: "center", justifyContent: "center", color: "#666", textDecoration: "none", fontSize: 14 }}>in</a>
+                <a href="https://twitter.com" target="_blank" rel="noreferrer" style={{ width: 36, height: 36, borderRadius: 8, background: "#1E2640", display: "flex", alignItems: "center", justifyContent: "center", color: "#666", textDecoration: "none", fontSize: 14 }}>X</a>
+                <a href="mailto:hello@immtech.co.uk" style={{ width: 36, height: 36, borderRadius: 8, background: "#1E2640", display: "flex", alignItems: "center", justifyContent: "center", color: "#666", textDecoration: "none", fontSize: 14 }}>@</a>
+              </div>
             </div>
-            <span style={{ fontWeight: 900, fontSize: 16, color: "#fff" }}>IMMTECH</span>
+
+            {/* For Candidates */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#0057FF", letterSpacing: 1, marginBottom: 20, textTransform: "uppercase" }}>For Candidates</div>
+              {[
+                ["Find Jobs", "/jobs"],
+                ["Visa Checker", "/visa-checker"],
+                ["COS Checker", "/cos-checker"],
+                ["Create Profile", "/onboarding"],
+                ["Job Alerts", "/notifications"],
+              ].map(([label, path]) => (
+                <div key={label} onClick={() => navigate(path)}
+                  style={{ fontSize: 14, color: "#666", marginBottom: 12, cursor: "pointer", transition: "color 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#fff"}
+                  onMouseLeave={e => e.currentTarget.style.color = "#666"}>
+                  {label}
+                </div>
+              ))}
+            </div>
+
+            {/* For Employers */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#0057FF", letterSpacing: 1, marginBottom: 20, textTransform: "uppercase" }}>For Employers</div>
+              {[
+                ["Browse Talent", "/employers"],
+                ["Post a Job", "/employer/post"],
+                ["My Dashboard", "/employer/dashboard"],
+                ["Sponsorship Guide", "/about"],
+                ["Contact Sales", "/contact"],
+              ].map(([label, path]) => (
+                <div key={label} onClick={() => navigate(path)}
+                  style={{ fontSize: 14, color: "#666", marginBottom: 12, cursor: "pointer", transition: "color 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#fff"}
+                  onMouseLeave={e => e.currentTarget.style.color = "#666"}>
+                  {label}
+                </div>
+              ))}
+            </div>
+
+            {/* Company */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#0057FF", letterSpacing: 1, marginBottom: 20, textTransform: "uppercase" }}>Company</div>
+              {[
+                ["About Us", "/about"],
+                ["Our Mission", "/mission"],
+                ["Careers", "/careers"],
+                ["Contact", "/contact"],
+                ["Blog", "/about"],
+              ].map(([label, path]) => (
+                <div key={label} onClick={() => navigate(path)}
+                  style={{ fontSize: 14, color: "#666", marginBottom: 12, cursor: "pointer", transition: "color 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#fff"}
+                  onMouseLeave={e => e.currentTarget.style.color = "#666"}>
+                  {label}
+                </div>
+              ))}
+            </div>
           </div>
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            {[["About", "/about"], ["Contact", "/contact"], ["Privacy", "/privacy-policy"], ["Terms", "/terms-of-service"], ["GDPR", "/gdpr"]].map(([label, path]) => (
-              <span key={label} onClick={() => navigate(path)} style={{ fontSize: 13, color: "#555", cursor: "pointer", fontWeight: 500 }}>{label}</span>
+
+          {/* Visa route info bar */}
+          <div style={{ padding: "32px 0", borderBottom: "1px solid #1E2640", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24 }}>
+            {[
+              { route: "Skilled Worker", min: "GBP 41,700", color: "#0057FF" },
+              { route: "Health & Care", min: "GBP 29,000", color: "#00B86B" },
+              { route: "Shortage Occupations", min: "GBP 33,400", color: "#FF6B35" },
+              { route: "New Entrant Rate", min: "GBP 33,400", color: "#534AB7" },
+            ].map(v => (
+              <div key={v.route} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 3, height: 36, borderRadius: 2, background: v.color, flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 11, color: "#666", marginBottom: 2 }}>{v.route}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>{v.min} min.</div>
+                </div>
+              </div>
             ))}
           </div>
-          <div style={{ fontSize: 12, color: "#444" }}>2026 IMMTECH. Built for international talent.</div>
+
+          {/* Bottom bar */}
+          <div style={{ padding: "28px 0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+            <div style={{ fontSize: 12, color: "#444" }}>
+              2026 IMMTECH. Salary thresholds based on Home Office rules effective April 2024.
+            </div>
+            <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+              {[
+                ["Privacy Policy", "/privacy-policy"],
+                ["Terms of Service", "/terms-of-service"],
+                ["Cookie Policy", "/cookie-policy"],
+                ["GDPR", "/gdpr"],
+              ].map(([label, path]) => (
+                <span key={label} onClick={() => navigate(path)}
+                  style={{ fontSize: 12, color: "#444", cursor: "pointer", transition: "color 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#888"}
+                  onMouseLeave={e => e.currentTarget.style.color = "#444"}>
+                  {label}
+                </span>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#00B86B", animation: "pulse 2s infinite" }} />
+              <span style={{ fontSize: 12, color: "#00B86B", fontWeight: 500 }}>All systems operational</span>
+            </div>
+          </div>
+
         </div>
       </footer>
-
     </div>
   )
 }
