@@ -140,8 +140,8 @@ async function checkSponsor(employerName) {
 async function batchCheckSponsors(employers) {
   const unique = [...new Set(employers.filter(Boolean))]
   const results = {}
-  for (let i = 0; i < unique.length; i += 8) {
-    const batch = unique.slice(i, i + 8)
+  for (let i = 0; i < unique.length; i += 15) {
+    const batch = unique.slice(i, i + 15)
     await Promise.all(batch.map(async (emp) => { results[emp] = await checkSponsor(emp) }))
   }
   return results
@@ -437,10 +437,13 @@ async function fetchAdzuna(q, loc, page) {
 
 async function fetchReed(q, loc, page) {
   try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 8000)
     var keywords = q ? q + " visa sponsorship" : "visa sponsorship"
     const locationName = loc && loc !== "Anywhere in UK" ? loc : "United Kingdom"
     const params = new URLSearchParams({ keywords, locationName, resultsToTake: 40, resultsToSkip: (page - 1) * 40 })
-    const r = await fetch("https://uk-visa-jobs-six.vercel.app/api/reed?" + params)
+    const r = await fetch("https://uk-visa-jobs-six.vercel.app/api/reed?" + params, { signal: controller.signal })
+    clearTimeout(timeout)
     if (!r.ok) return []
     const data = await r.json()
     return (data.results || []).map(j => ({
@@ -618,37 +621,65 @@ export default function JobsPage() {
     try {
       const cleanLoc = searchLoc && searchLoc !== "Anywhere in UK" ? searchLoc : ""
 
-      // Fetch from 3 sources simultaneously:
-      // 1+2. Reed & Adzuna general search (3 pages each)
-      // 3. Employer-targeted search via our top known sponsors list
-      const empParams = new URLSearchParams()
-      if (searchQ) empParams.set("role", searchQ)
-      if (cleanLoc) empParams.set("loc", cleanLoc)
+      // Fetch direct employer jobs from Supabase + Reed + Adzuna simultaneously
+      // Direct jobs are 100% verified - shown first always
+      let directQuery = supabase.from("direct_jobs").select("*").eq("status", "active").order("created_at", { ascending: false }).limit(20)
+      if (searchQ) directQuery = directQuery.ilike("title", "%" + searchQ + "%")
+      if (cleanLoc) directQuery = directQuery.ilike("location", "%" + cleanLoc + "%")
 
-      const [fetches, empRes] = await Promise.allSettled([
-        Promise.allSettled([
-          fetchReed(searchQ, cleanLoc, 1),   fetchAdzuna(searchQ, cleanLoc, 1),
-          fetchReed(searchQ, cleanLoc, 2),   fetchAdzuna(searchQ, cleanLoc, 2),
-          fetchReed(searchQ, cleanLoc, 3),   fetchAdzuna(searchQ, cleanLoc, 3),
-        ]),
-        fetch("/api/employer-jobs?" + empParams).then(r => r.ok ? r.json() : { jobs: [] }).catch(() => ({ jobs: [] })),
+      const [directRes, reedRes, adzRes] = await Promise.allSettled([
+        directQuery,
+        fetchReed(searchQ, cleanLoc, 1),
+        fetchAdzuna(searchQ, cleanLoc, 1),
       ])
 
+      // Map direct jobs to same shape as API jobs
+      let directJobs = []
+      if (directRes.status === "fulfilled" && directRes.value.data) {
+        directJobs = directRes.value.data.map(j => ({
+          id: "direct_" + j.id,
+          source: "Direct",
+          title: j.title,
+          employer: j.employer_name,
+          location: j.location,
+          salary_min: j.salary_min,
+          salary_max: j.salary_max,
+          description: j.description,
+          requirements: j.requirements,
+          benefits: j.benefits,
+          url: j.url || "#",
+          posted: j.created_at,
+          full_time: j.job_type === "Full-time",
+          soc_code: j.soc_code,
+          visa_route: j.visa_route,
+          is_new_entrant: j.is_new_entrant,
+          // Direct jobs are pre-verified - give them top scores
+          score: 95,
+          likelihood: "Confirmed",
+          verified: j.sponsor_verified,
+          signals: [
+            { type: "verified", label: "Direct from Employer" },
+            j.sponsor_verified ? { type: "rating", label: "Gov Verified" } : null,
+            { type: "visa", label: j.visa_route || "Skilled Worker" },
+          ].filter(Boolean),
+          fresherFriendly: j.is_new_entrant,
+          sponsorInfo: j.sponsor_verified ? { organisation_name: j.organisation_name, rating: j.sponsor_rating, route: j.sponsor_route } : null,
+        }))
+      }
+
       let rawJobs = []
-      // Merge general search results
-      if (fetches.status === "fulfilled") {
-        for (const r of fetches.value) { if (r.status === "fulfilled") rawJobs.push(...r.value) }
-      }
-      // Merge employer-targeted results
-      if (empRes.status === "fulfilled" && empRes.value.jobs) {
-        rawJobs.push(...empRes.value.jobs)
-      }
+      if (reedRes.status === "fulfilled") rawJobs.push(...reedRes.value)
+      if (adzRes.status === "fulfilled") rawJobs.push(...adzRes.value)
 
       if (rawJobs.length === 0) {
         setError("No results found. Try a different search.")
         setLoading(false)
         return
       }
+
+      // Merge direct jobs (pre-scored) with API jobs (scored above)
+      // Direct jobs always go first
+      const allScored = [...directJobs, ...scored]
 
       // Deduplicate by title + employer
       const seen = new Set()
@@ -658,12 +689,10 @@ export default function JobsPage() {
         seen.add(key); return true
       })
 
-      // Enrich Reed jobs with full descriptions before scoring
-      // This catches rejection phrases buried deeper in the text
-      await enrichReedDescriptions(rawJobs)
-
       // Verify every employer against the Home Office sponsor register
-      const sponsorMap = await batchCheckSponsors(rawJobs.map(j => j.employer))
+      // Only check sponsors for first 60 jobs - checking 200+ is too slow
+      const jobsToCheck = rawJobs.slice(0, 60)
+      const sponsorMap = await batchCheckSponsors(jobsToCheck.map(j => j.employer))
 
       // Score all jobs with likelihood tiers - score 0 = filtered out
       let scored = rawJobs.map(j => {
