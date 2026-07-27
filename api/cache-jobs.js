@@ -9,9 +9,10 @@ import { createClient } from "@supabase/supabase-js"
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
-const ADZUNA_ID   = "344e86d1"
-const ADZUNA_KEY  = "039c47ae80bab92aef99751a471040fb"
-const JOOBLE_KEY  = "383af7e3-137d-47a4-a34d-060e1b12f9c9"
+// Set these three in your Vercel project's Environment Variables, never in code.
+const ADZUNA_ID   = process.env.ADZUNA_ID
+const ADZUNA_KEY  = process.env.ADZUNA_KEY
+const JOOBLE_KEY  = process.env.JOOBLE_KEY
 
 const REED_PROXY  = "https://uk-visa-jobs-six.vercel.app/api/reed"
 

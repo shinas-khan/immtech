@@ -1,6 +1,6 @@
 // api/jooble.js
 // Jooble REST API proxy - runs server-side to avoid CORS issues
-// Jooble key: 383af7e3-137d-47a4-a34d-060e1b12f9c9
+// Set JOOBLE_KEY in your Vercel project's Environment Variables, never in code.
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*")
@@ -8,6 +8,14 @@ export default async function handler(req, res) {
 
   const { keywords, location, page } = req.query
   const pageNum = parseInt(page || "1")
+
+  const JOOBLE_KEY = process.env.JOOBLE_KEY
+  if (!JOOBLE_KEY) {
+    // Fails safe rather than throwing - if you've decided to drop Jooble
+    // as a source, just leave this env var unset and this endpoint quietly
+    // returns no results instead of erroring.
+    return res.status(200).json({ jobs: [], totalCount: 0 })
+  }
 
   try {
     const body = JSON.stringify({
@@ -18,7 +26,7 @@ export default async function handler(req, res) {
     })
 
     const r = await fetch(
-      "https://jooble.org/api/383af7e3-137d-47a4-a34d-060e1b12f9c9",
+      `https://jooble.org/api/${JOOBLE_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

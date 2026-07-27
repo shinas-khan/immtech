@@ -3,8 +3,9 @@
 // Called by JobsPage when user searches - supplements general search results
 // with targeted employer-specific searches for maximum accuracy
 
-const ADZUNA_ID  = "344e86d1"
-const ADZUNA_KEY = "039c47ae80bab92aef99751a471040fb"
+// Set these in your Vercel project's Environment Variables, never in code.
+const ADZUNA_ID  = process.env.ADZUNA_ID
+const ADZUNA_KEY = process.env.ADZUNA_KEY
 
 async function fetchReedForEmployer(searchTerm, loc, jobRole) {
   try {

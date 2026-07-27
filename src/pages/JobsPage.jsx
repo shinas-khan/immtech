@@ -4,9 +4,6 @@ import { ALL_JOBS, ALL_LOCATIONS } from "../lib/constants"
 import { supabase } from "../lib/supabase"
 import Nav from "../components/Nav"
 
-const ADZUNA_ID = "344e86d1"
-const ADZUNA_KEY = "039c47ae80bab92aef99751a471040fb"
-
 const FRESHER_KW = ["graduate","entry level","junior","trainee","apprentice","no experience","fresh graduate","new graduate","grad scheme","graduate scheme","placement","internship"]
 const NEG_KW = [
   // Direct no-sponsorship statements
@@ -370,8 +367,10 @@ async function fetchAdzuna(q, loc, page) {
   try {
     const what = q ? q + " visa sponsorship" : "visa sponsorship uk jobs"
     const where = loc && loc !== "Anywhere in UK" ? loc : "UK"
-    const params = new URLSearchParams({ app_id: ADZUNA_ID, app_key: ADZUNA_KEY, what, where, results_per_page: 40 })
-    const r = await fetch("https://api.adzuna.com/v1/api/jobs/gb/search/" + page + "?" + params)
+    // Proxied server-side via api/adzuna-search.js - the app_id/app_key never
+    // reach the browser this way, unlike the old direct-to-Adzuna call.
+    const params = new URLSearchParams({ what, where, page })
+    const r = await fetch("/api/adzuna-search?" + params)
     if (!r.ok) return []
     const data = await r.json()
     return (data.results || []).map(j => ({

@@ -1,5 +1,9 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense, lazy } from "react"
 import { useNavigate } from "react-router-dom"
+
+// Three.js is ~600kB - code-split it so it never blocks first paint/LCP
+// of the hero copy and CTA buttons, which matter far more for conversion.
+const Hero3D = lazy(() => import("../components/Hero3D"))
 
 function useCountUp(target, duration = 2000, start = false) {
   const [count, setCount] = useState(0)
@@ -144,7 +148,15 @@ export default function LandingPage() {
         <div style={{ position: "absolute", top: -200, right: -200, width: 600, height: 600, borderRadius: "50%", background: "#0057FF08", pointerEvents: "none" }} />
         <div style={{ position: "absolute", bottom: -100, left: -100, width: 400, height: 400, borderRadius: "50%", background: "#0057FF05", pointerEvents: "none" }} />
 
-        <div style={{ maxWidth: 1140, margin: "0 auto", width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center" }}>
+        {/* 3D animated sponsor network - the "125,284 verified sponsors" claim,
+            rendered as a living network instead of a static number */}
+        <div style={{ position: "absolute", top: 0, right: "-8%", width: "62%", height: "100%", pointerEvents: "none" }}>
+          <Suspense fallback={null}>
+            <Hero3D nodeCount={110} />
+          </Suspense>
+        </div>
+
+        <div style={{ maxWidth: 1140, margin: "0 auto", width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center", position: "relative" }}>
 
           {/* Left - copy */}
           <div>
