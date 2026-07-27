@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, Suspense, lazy } from "react"
 import { useNavigate } from "react-router-dom"
+import { gsap } from "gsap"
+import { ScrollTrigger } from "gsap/ScrollTrigger"
+
+gsap.registerPlugin(ScrollTrigger)
 
 // Three.js is ~600kB - code-split it so it never blocks first paint/LCP
 // of the hero copy and CTA buttons, which matter far more for conversion.
@@ -65,6 +69,9 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [statsRef, statsInView] = useInView()
   const [howRef, howInView] = useInView()
+  const pageRef = useRef(null)
+  const progressRef = useRef(null)
+  const heroSectionRef = useRef(null)
 
   const go = (path) => { setMobileMenuOpen(false); navigate(path) }
 
@@ -80,6 +87,64 @@ export default function LandingPage() {
     return () => clearInterval(interval)
   }, [])
 
+  // Cinematic scroll effects - added on top of the existing fade-up entrance
+  // and IntersectionObserver-driven stat/how-card reveals (left untouched
+  // since they already work). This layer covers everywhere that previously
+  // had zero scroll motion: the top progress bar, hero background parallax,
+  // and staggered reveals for role pills, graduate cards, dual CTA panels
+  // and the footer columns.
+  //
+  // Wrapped in gsap.context() so every tween/ScrollTrigger created here gets
+  // torn down via ctx.revert() on unmount - without this, navigating away
+  // from the landing page in this SPA would leave orphaned ScrollTriggers
+  // listening on a scroll container that no longer exists.
+  useEffect(() => {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    if (reduceMotion) return // respect the OS setting - no scroll-driven motion at all
+
+    const ctx = gsap.context(() => {
+      // Top scroll-progress bar - classic "how far through the page" signal
+      if (progressRef.current) {
+        gsap.set(progressRef.current, { scaleX: 0, transformOrigin: "0% 50%" })
+        ScrollTrigger.create({
+          start: 0,
+          end: () => document.documentElement.scrollHeight - window.innerHeight,
+          scrub: 0.3,
+          onUpdate: (self) => gsap.set(progressRef.current, { scaleX: self.progress }),
+        })
+      }
+
+      // Hero background circles drift at different speeds while scrolling
+      // past the hero - subtle parallax depth, not a full pin/scrub set piece
+      // (those are expensive and this page already has a heavy Three.js hero).
+      gsap.utils.toArray(".hero-parallax-slow").forEach((el) => {
+        gsap.to(el, { y: 120, ease: "none", scrollTrigger: { trigger: heroSectionRef.current, start: "top top", end: "bottom top", scrub: true } })
+      })
+      gsap.utils.toArray(".hero-parallax-fast").forEach((el) => {
+        gsap.to(el, { y: -160, ease: "none", scrollTrigger: { trigger: heroSectionRef.current, start: "top top", end: "bottom top", scrub: true } })
+      })
+
+      // Batched reveal-on-scroll for every repeated card/pill group that
+      // previously had no scroll animation at all.
+      const batches = [
+        { sel: ".role-pill", y: 24, stagger: 0.05 },
+        { sel: ".grad-card", y: 30, stagger: 0.08 },
+        { sel: ".cta-card", y: 40, stagger: 0.15 },
+        { sel: ".footer-col", y: 24, stagger: 0.08 },
+        { sel: ".reveal-heading", y: 20, stagger: 0 },
+      ]
+      batches.forEach(({ sel, y, stagger }) => {
+        ScrollTrigger.batch(sel, {
+          start: "top 88%",
+          once: true,
+          onEnter: (batch) => gsap.from(batch, { opacity: 0, y, stagger, duration: 0.7, ease: "power3.out" }),
+        })
+      })
+    }, pageRef)
+
+    return () => ctx.revert()
+  }, [])
+
   const S = {
     page: { fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif", overflowX: "hidden", background: "#fff" },
     nav: { position: "fixed", top: 0, left: 0, right: 0, zIndex: 100, background: "rgba(255,255,255,0.96)", backdropFilter: "blur(12px)", borderBottom: "1px solid #F0F0F0", padding: "0 5%", height: 68, display: "flex", alignItems: "center", justifyContent: "space-between" },
@@ -93,7 +158,8 @@ export default function LandingPage() {
   }
 
   return (
-    <div style={S.page}>
+    <div ref={pageRef} style={S.page}>
+      <div ref={progressRef} style={{ position: "fixed", top: 0, left: 0, right: 0, height: 3, background: "linear-gradient(90deg, #0057FF, #00B86B)", zIndex: 200, transform: "scaleX(0)" }} />
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -189,11 +255,11 @@ export default function LandingPage() {
       )}
 
       {/* Hero */}
-      <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", padding: "100px 5% 80px", background: "#fff", position: "relative", overflow: "hidden" }}>
+      <section ref={heroSectionRef} style={{ minHeight: "100vh", display: "flex", alignItems: "center", padding: "100px 5% 80px", background: "#fff", position: "relative", overflow: "hidden" }}>
 
-        {/* Background accent circles */}
-        <div style={{ position: "absolute", top: -200, right: -200, width: 600, height: 600, borderRadius: "50%", background: "#0057FF08", pointerEvents: "none" }} />
-        <div style={{ position: "absolute", bottom: -100, left: -100, width: 400, height: 400, borderRadius: "50%", background: "#0057FF05", pointerEvents: "none" }} />
+        {/* Background accent circles - drift at different speeds on scroll for parallax depth */}
+        <div className="hero-parallax-slow" style={{ position: "absolute", top: -200, right: -200, width: 600, height: 600, borderRadius: "50%", background: "#0057FF08", pointerEvents: "none" }} />
+        <div className="hero-parallax-fast" style={{ position: "absolute", bottom: -100, left: -100, width: 400, height: 400, borderRadius: "50%", background: "#0057FF05", pointerEvents: "none" }} />
 
         {/* 3D animated sponsor network - the "125,284 verified sponsors" claim,
             rendered as a living network instead of a static number */}
@@ -304,7 +370,7 @@ export default function LandingPage() {
       {/* Role pills */}
       <section style={{ background: "#F8FAFF", padding: "60px 5%" }}>
         <div style={{ maxWidth: 1140, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <div className="reveal-heading" style={{ textAlign: "center", marginBottom: 40 }}>
             <h2 style={{ fontSize: 32, fontWeight: 900, color: "#0A0F1E", letterSpacing: -1, marginBottom: 12 }}>Roles we specialise in</h2>
             <p style={{ fontSize: 16, color: "#888", maxWidth: 500, margin: "0 auto" }}>All verified against the Home Office sponsor register and current salary thresholds</p>
           </div>
@@ -366,7 +432,7 @@ export default function LandingPage() {
       {/* For graduates section */}
       <section style={{ background: "#F8FAFF", padding: "100px 5%" }}>
         <div className="lp-2col" style={{ maxWidth: 1140, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
-          <div>
+          <div className="reveal-heading">
             <div style={{ display: "inline-block", background: "#FF6B3510", borderRadius: 20, padding: "5px 16px", marginBottom: 20 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "#FF6B35", letterSpacing: 1 }}>FOR RECENT GRADUATES</span>
             </div>
@@ -389,7 +455,7 @@ export default function LandingPage() {
               { label: "Health & Care route", val: "GBP 29,000", color: "#E8F8F0", textColor: "#00B86B", sub: "Nurses, doctors, pharmacists" },
               { label: "Shortage occupations", val: "GBP 33,400", color: "#F0F0FF", textColor: "#534AB7", sub: "Teachers, engineers, chefs" },
             ].map(c => (
-              <div key={c.label} style={{ background: c.color, borderRadius: 16, padding: "24px 20px" }}>
+              <div key={c.label} className="grad-card" style={{ background: c.color, borderRadius: 16, padding: "24px 20px" }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: c.textColor, opacity: 0.7, marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>{c.label}</div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: c.textColor, letterSpacing: -0.5, marginBottom: 6 }}>{c.val}</div>
                 <div style={{ fontSize: 12, color: c.textColor, opacity: 0.7 }}>{c.sub}</div>
@@ -402,7 +468,7 @@ export default function LandingPage() {
       {/* Dual CTA */}
       <section style={{ background: "#0A0F1E", padding: "80px 5%" }}>
         <div className="lp-2col" style={{ maxWidth: 1140, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-          <div style={{ background: "#0057FF", borderRadius: 24, padding: "48px 40px" }}>
+          <div className="cta-card" style={{ background: "#0057FF", borderRadius: 24, padding: "48px 40px" }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: 1, marginBottom: 16 }}>FOR CANDIDATES</div>
             <h3 style={{ fontSize: 32, fontWeight: 900, color: "#fff", letterSpacing: -1, lineHeight: 1.15, marginBottom: 20 }}>Find your<br />sponsored role</h3>
             <p style={{ fontSize: 15, color: "rgba(255,255,255,0.7)", lineHeight: 1.7, marginBottom: 32 }}>Search verified jobs, check your visa eligibility, and track your applications in one place.</p>
@@ -411,7 +477,7 @@ export default function LandingPage() {
               Get started free
             </button>
           </div>
-          <div style={{ background: "#161B2E", borderRadius: 24, padding: "48px 40px", border: "1px solid #1E2640" }}>
+          <div className="cta-card" style={{ background: "#161B2E", borderRadius: 24, padding: "48px 40px", border: "1px solid #1E2640" }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: 1, marginBottom: 16 }}>FOR EMPLOYERS</div>
             <h3 style={{ fontSize: 32, fontWeight: 900, color: "#fff", letterSpacing: -1, lineHeight: 1.15, marginBottom: 20 }}>Hire verified<br />international talent</h3>
             <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", lineHeight: 1.7, marginBottom: 32 }}>Post your sponsored roles directly. Reach thousands of visa-ready candidates instantly.</p>
@@ -431,7 +497,7 @@ export default function LandingPage() {
           <div className="lp-footer-top" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 60, paddingBottom: 60, borderBottom: "1px solid #1E2640" }}>
 
             {/* Brand column */}
-            <div>
+            <div className="footer-col">
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: "#0057FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <span style={{ color: "#fff", fontWeight: 900, fontSize: 12 }}>IT</span>
@@ -449,7 +515,7 @@ export default function LandingPage() {
             </div>
 
             {/* For Candidates */}
-            <div>
+            <div className="footer-col">
               <div style={{ fontSize: 11, fontWeight: 700, color: "#0057FF", letterSpacing: 1, marginBottom: 20, textTransform: "uppercase" }}>For Candidates</div>
               {[
                 ["Find Jobs", "/jobs"],
@@ -468,7 +534,7 @@ export default function LandingPage() {
             </div>
 
             {/* For Employers */}
-            <div>
+            <div className="footer-col">
               <div style={{ fontSize: 11, fontWeight: 700, color: "#0057FF", letterSpacing: 1, marginBottom: 20, textTransform: "uppercase" }}>For Employers</div>
               {[
                 ["Browse Talent", "/employers"],
@@ -487,7 +553,7 @@ export default function LandingPage() {
             </div>
 
             {/* Company */}
-            <div>
+            <div className="footer-col">
               <div style={{ fontSize: 11, fontWeight: 700, color: "#0057FF", letterSpacing: 1, marginBottom: 20, textTransform: "uppercase" }}>Company</div>
               {[
                 ["About Us", "/about"],
