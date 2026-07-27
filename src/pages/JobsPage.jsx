@@ -121,16 +121,34 @@ async function checkSponsor(employerName) {
     const clean = employerName
       .replace(/\s+(ltd|limited|plc|llp|inc|group|uk|co|corp|corporation|holdings|services|solutions|international|technologies|technology|systems|consulting|consultancy|recruitment|staffing|agency)\.?$/gi, "")
       .replace(/[^\w\s]/g, " ").trim()
-    if (clean.length < 2) return null
+    // Require a slightly longer minimum than before (was 2) - a 2-character
+    // fuzzy query is where the false-positive risk below gets worst.
+    if (clean.length < 3) return null
+
     const { data: exact } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", employerName).limit(1)
     if (exact?.[0]) return exact[0]
-    const { data: contains } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", `%${clean}%`).limit(1)
-    if (contains?.[0]) return contains[0]
-    const firstWord = clean.split(" ")[0]
-    if (firstWord.length >= 4) {
-      const { data: partial } = await supabase.from("sponsors").select("organisation_name, town, route, rating").ilike("organisation_name", `${firstWord}%`).limit(1)
-      if (partial?.[0]) return partial[0]
-    }
+
+    // Previously this was `ilike '%clean%'` - a raw substring match across
+    // all ~125,000 rows. For a short query like "BT" or "IBM" that matches
+    // almost anything containing those letters adjacent anywhere, even
+    // mid-word ("Albton", "Robturn", etc.) - producing "verified" badges
+    // that are really just coincidental letter collisions, not the actual
+    // employer. Word-boundary matching (\y in Postgres regex) requires the
+    // query to appear as a whole word/phrase, not a fragment inside another
+    // word - far fewer false positives at this scale.
+    const escaped = clean.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const { data: wordMatch } = await supabase
+      .from("sponsors")
+      .select("organisation_name, town, route, rating")
+      .filter("organisation_name", "~*", `\\y${escaped}\\y`)
+      .limit(1)
+    if (wordMatch?.[0]) return wordMatch[0]
+
+    // The old third tier (match anything starting with the query's first
+    // word) is removed entirely - "Bank" matching "Bank of Nowhere Holdings"
+    // for a completely unrelated employer was a bigger risk than the
+    // occasional missed match it caught. A missed match shows "not found",
+    // which is honest; a wrong match shows false trust, which is worse.
     return null
   } catch { return null }
 }

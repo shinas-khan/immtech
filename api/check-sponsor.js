@@ -62,11 +62,15 @@ export default async function handler(req, res) {
       .ilike("organisation_name", employer)
       .limit(1)
 
-    if (!data?.[0] && clean.length >= 2) {
+    // Word-boundary match, not raw substring - see the comment in
+    // src/pages/JobsPage.jsx's checkSponsor() for why `ilike '%x%'` produces
+    // false "verified" badges for short queries at 125k-row scale.
+    if (!data?.[0] && clean.length >= 3) {
+      const escaped = clean.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
       const res2 = await supabase
         .from("sponsors")
         .select("organisation_name, town, route, rating")
-        .ilike("organisation_name", `%${clean}%`)
+        .filter("organisation_name", "~*", `\\y${escaped}\\y`)
         .limit(1)
       data = res2.data
     }

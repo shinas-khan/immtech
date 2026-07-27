@@ -62,8 +62,11 @@ export default function LandingPage() {
   const navigate = useNavigate()
   const [heroVisible, setHeroVisible] = useState(false)
   const [activeRole, setActiveRole] = useState(0)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [statsRef, statsInView] = useInView()
   const [howRef, howInView] = useInView()
+
+  const go = (path) => { setMobileMenuOpen(false); navigate(path) }
 
   const stat0 = useCountUp(125284, 2500, statsInView)
   const stat1 = useCountUp(88, 1500, statsInView)
@@ -119,6 +122,26 @@ export default function LandingPage() {
         .floating { animation: float 4s ease-in-out infinite; }
         .floating-2 { animation: float 4s ease-in-out infinite 1s; }
         .floating-3 { animation: float 4s ease-in-out infinite 2s; }
+
+        /* --- Mobile layout fixes ---
+           LandingPage has its own nav (separate from the shared Nav.jsx used
+           on inner pages), and it never had a mobile breakpoint - this is
+           what caused the cramped/overlapping header and squished hero. */
+        .lp-nav-hamburger { display: none; }
+        @media (max-width: 860px) {
+          .lp-desktop-only { display: none !important; }
+          .lp-nav-hamburger { display: flex !important; }
+          .lp-hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
+          .lp-hero-3d { display: none !important; }
+          .lp-hero-right { height: 420px !important; margin-top: 8px; }
+          .lp-2col { grid-template-columns: 1fr !important; gap: 32px !important; }
+          .lp-footer-top { grid-template-columns: 1fr !important; gap: 36px !important; }
+          .lp-footer-routes { grid-template-columns: repeat(2, 1fr) !important; }
+          section { padding-left: 6% !important; padding-right: 6% !important; }
+        }
+        @media (max-width: 480px) {
+          .lp-hero-right { height: 360px !important; }
+        }
       `}</style>
 
       {/* Nav */}
@@ -129,17 +152,41 @@ export default function LandingPage() {
           </div>
           <span style={S.logoText}>IMMTECH</span>
         </div>
-        <div style={S.navLinks}>
+        <div className="lp-desktop-only" style={S.navLinks}>
           <button style={S.navLink} onClick={() => navigate("/jobs")}>Find Jobs</button>
           <button style={S.navLink} onClick={() => navigate("/visa-checker")}>Visa Checker</button>
           <button style={S.navLink} onClick={() => navigate("/cos-checker")}>COS Checker</button>
           <button style={S.navLink} onClick={() => navigate("/employers")}>For Employers</button>
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+        <div className="lp-desktop-only" style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button style={S.signIn} className="btn-sec" onClick={() => navigate("/auth")}>Sign in</button>
           <button style={S.cta} className="btn-main" onClick={() => navigate("/onboarding")}>Get Started</button>
         </div>
+        <button
+          className="lp-nav-hamburger"
+          aria-label="Open menu"
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen(o => !o)}
+          style={{ background: "none", border: "1.5px solid #E8EEFF", borderRadius: 9, padding: "9px 11px", cursor: "pointer", flexDirection: "column", gap: 4, alignItems: "center", justifyContent: "center" }}>
+          <span style={{ width: 18, height: 2, background: "#0A0F1E", borderRadius: 2 }} />
+          <span style={{ width: 18, height: 2, background: "#0A0F1E", borderRadius: 2 }} />
+        </button>
       </nav>
+
+      {mobileMenuOpen && (
+        <div style={{ position: "fixed", top: 68, left: 0, right: 0, zIndex: 99, background: "#fff", borderBottom: "1px solid #F0F0F0", boxShadow: "0 16px 32px rgba(10,15,30,0.1)", padding: "12px 6% 20px", display: "flex", flexDirection: "column", gap: 2 }}>
+          {[["Find Jobs", "/jobs"], ["Visa Checker", "/visa-checker"], ["COS Checker", "/cos-checker"], ["For Employers", "/employers"]].map(([label, path]) => (
+            <button key={path} onClick={() => go(path)}
+              style={{ textAlign: "left", background: "none", border: "none", padding: "14px 6px", fontSize: 16, fontWeight: 600, color: "#0A0F1E", fontFamily: "inherit", cursor: "pointer", borderBottom: "1px solid #F5F5F5" }}>
+              {label}
+            </button>
+          ))}
+          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+            <button onClick={() => go("/auth")} style={{ ...S.signIn, flex: 1, padding: "12px", textAlign: "center" }}>Sign in</button>
+            <button onClick={() => go("/onboarding")} style={{ ...S.cta, flex: 1, padding: "12px", textAlign: "center" }}>Get Started</button>
+          </div>
+        </div>
+      )}
 
       {/* Hero */}
       <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", padding: "100px 5% 80px", background: "#fff", position: "relative", overflow: "hidden" }}>
@@ -150,13 +197,13 @@ export default function LandingPage() {
 
         {/* 3D animated sponsor network - the "125,284 verified sponsors" claim,
             rendered as a living network instead of a static number */}
-        <div style={{ position: "absolute", top: 0, right: "-8%", width: "62%", height: "100%", pointerEvents: "none" }}>
+        <div className="lp-hero-3d" style={{ position: "absolute", top: 0, right: "-8%", width: "62%", height: "100%", pointerEvents: "none" }}>
           <Suspense fallback={null}>
             <Hero3D nodeCount={110} />
           </Suspense>
         </div>
 
-        <div style={{ maxWidth: 1140, margin: "0 auto", width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center", position: "relative" }}>
+        <div className="lp-hero-grid" style={{ maxWidth: 1140, margin: "0 auto", width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center", position: "relative" }}>
 
           {/* Left - copy */}
           <div>
@@ -197,7 +244,7 @@ export default function LandingPage() {
           </div>
 
           {/* Right - animated job cards */}
-          <div style={{ position: "relative", height: 480 }}>
+          <div className="lp-hero-right" style={{ position: "relative", height: 480 }}>
 
             {/* Main card */}
             <div className="floating" style={{ position: "absolute", top: 40, left: 20, right: 20, background: "#fff", borderRadius: 20, border: "1px solid #E8EEFF", padding: "24px", boxShadow: "0 20px 60px rgba(0,57,255,0.12)" }}>
@@ -318,7 +365,7 @@ export default function LandingPage() {
 
       {/* For graduates section */}
       <section style={{ background: "#F8FAFF", padding: "100px 5%" }}>
-        <div style={{ maxWidth: 1140, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
+        <div className="lp-2col" style={{ maxWidth: 1140, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
           <div>
             <div style={{ display: "inline-block", background: "#FF6B3510", borderRadius: 20, padding: "5px 16px", marginBottom: 20 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "#FF6B35", letterSpacing: 1 }}>FOR RECENT GRADUATES</span>
@@ -354,7 +401,7 @@ export default function LandingPage() {
 
       {/* Dual CTA */}
       <section style={{ background: "#0A0F1E", padding: "80px 5%" }}>
-        <div style={{ maxWidth: 1140, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+        <div className="lp-2col" style={{ maxWidth: 1140, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
           <div style={{ background: "#0057FF", borderRadius: 24, padding: "48px 40px" }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: 1, marginBottom: 16 }}>FOR CANDIDATES</div>
             <h3 style={{ fontSize: 32, fontWeight: 900, color: "#fff", letterSpacing: -1, lineHeight: 1.15, marginBottom: 20 }}>Find your<br />sponsored role</h3>
@@ -381,7 +428,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: 1140, margin: "0 auto" }}>
 
           {/* Top grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 60, paddingBottom: 60, borderBottom: "1px solid #1E2640" }}>
+          <div className="lp-footer-top" style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 60, paddingBottom: 60, borderBottom: "1px solid #1E2640" }}>
 
             {/* Brand column */}
             <div>
@@ -460,7 +507,7 @@ export default function LandingPage() {
           </div>
 
           {/* Visa route info bar */}
-          <div style={{ padding: "32px 0", borderBottom: "1px solid #1E2640", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24 }}>
+          <div className="lp-footer-routes" style={{ padding: "32px 0", borderBottom: "1px solid #1E2640", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 24 }}>
             {[
               { route: "Skilled Worker", min: "GBP 41,700", color: "#0057FF" },
               { route: "Health & Care", min: "GBP 29,000", color: "#00B86B" },

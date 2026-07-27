@@ -39,8 +39,12 @@ const SEARCH_TERMS = [
   "machine learning",
   "network engineer",
   "care worker",
+  "care assistant",
+  "healthcare assistant",
+  "support worker",
   "doctor",
   "teacher",
+  "teaching assistant",
   "chef",
   "architect",
 ]
@@ -78,12 +82,19 @@ const HEALTH_ROLES = [
   "nurse", "midwife", "paramedic", "pharmacist", "dentist",
   "physiotherapist", "radiographer", "occupational therapist",
   "doctor", "surgeon", "physician", "healthcare", "clinical",
+  // "care worker" was a SEARCH_TERM but wasn't in this list, so every care
+  // worker job (realistically salaried well under the 41,700 standard rate)
+  // was hard-rejected below. These are Health & Care Worker visa route roles
+  // with their own lower going rate - they belong here, not on the standard
+  // rate check.
+  "care worker", "care assistant", "healthcare assistant",
+  "support worker", "senior care worker",
 ]
 
 const SHORTAGE_ROLES = [
   "teacher", "secondary teacher", "primary teacher",
   "social worker", "civil engineer", "mechanical engineer",
-  "electrical engineer", "chef", "cook",
+  "electrical engineer", "chef", "cook", "teaching assistant",
 ]
 
 const MIN_SALARY_STANDARD = 41700
@@ -260,12 +271,32 @@ async function checkSponsors(supabase, employers) {
     const batch = unique.slice(i, i + 20)
     for (const emp of batch) {
       try {
-        const clean = emp.replace(/\s+(ltd|limited|plc|llp|inc|group|uk|co)\.*$/gi, "").trim()
-        const { data } = await supabase.from("sponsors")
+        // This was the one remaining copy of the old ilike '%x%' substring
+        // match - the same pattern already replaced with word-boundary regex
+        // in src/pages/JobsPage.jsx and api/check-sponsor.js after it was
+        // shown to false-match short/common employer fragments. This is the
+        // function that actually decides "verified" on the live job board
+        // (the other two only affect the extension and the manual checker
+        // page), so leaving it unfixed here meant the site's real "Gov
+        // Verified" badge was still running on the risky logic.
+        const clean = emp
+          .replace(/\s+(ltd|limited|plc|llp|inc|group|uk|co|corp|corporation|holdings|services|solutions|international|technologies|technology|systems|consulting|consultancy|recruitment|staffing|agency)\.?$/gi, "")
+          .replace(/[^\w\s]/g, " ")
+          .trim()
+        if (clean.length < 3) continue
+
+        const { data: exact } = await supabase.from("sponsors")
           .select("organisation_name, rating, route")
-          .ilike("organisation_name", "%" + clean + "%")
+          .ilike("organisation_name", emp)
           .limit(1)
-        if (data && data[0]) results[emp] = data[0]
+        if (exact && exact[0]) { results[emp] = exact[0]; continue }
+
+        const escaped = clean.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        const { data: wordMatch } = await supabase.from("sponsors")
+          .select("organisation_name, rating, route")
+          .filter("organisation_name", "~*", `\\y${escaped}\\y`)
+          .limit(1)
+        if (wordMatch && wordMatch[0]) results[emp] = wordMatch[0]
       } catch {}
     }
   }
@@ -273,9 +304,15 @@ async function checkSponsors(supabase, employers) {
 }
 
 export default async function handler(req, res) {
-  // Security - only allow Vercel cron or manual trigger with secret
+  // Security - Vercel injects "Authorization: Bearer $CRON_SECRET" automatically
+  // on its own cron invocations (GET requests) when CRON_SECRET is set, so
+  // requiring it here doesn't break the real cron. The previous check only
+  // enforced this for non-GET requests, which meant anyone who found this URL
+  // could send a plain GET and force a full refresh - burning through the
+  // Adzuna/Jooble free-tier quota for the day and leaving nothing left for
+  // the real 6am run. Now every request needs the secret.
   const authHeader = req.headers.authorization
-  if (authHeader !== "Bearer " + process.env.CRON_SECRET && req.method !== "GET") {
+  if (!process.env.CRON_SECRET || authHeader !== "Bearer " + process.env.CRON_SECRET) {
     return res.status(401).json({ error: "Unauthorized" })
   }
 
@@ -289,17 +326,27 @@ export default async function handler(req, res) {
 
   for (const term of SEARCH_TERMS) {
     try {
-      // Fetch from all 3 sources simultaneously (2 pages each)
-      const [r1, r2, a1, a2, j1] = await Promise.allSettled([
+      // Fetch from all 3 sources simultaneously. This only runs once a day
+      // (see vercel.json's cron schedule), so there's real headroom on the
+      // free-tier API caps - went from 2 pages each (Reed/Adzuna) + 1
+      // (Jooble) to 4/4/2 to roughly triple the raw pool feeding the scorer,
+      // since "only 18 jobs survive" was as much a volume problem as a
+      // scoring-threshold problem.
+      const [r1, r2, r3, r4, a1, a2, a3, a4, j1, j2] = await Promise.allSettled([
         fetchReed(term, 1),
         fetchReed(term, 2),
+        fetchReed(term, 3),
+        fetchReed(term, 4),
         fetchAdzuna(term, 1),
         fetchAdzuna(term, 2),
+        fetchAdzuna(term, 3),
+        fetchAdzuna(term, 4),
         fetchJooble(term, 1),
+        fetchJooble(term, 2),
       ])
 
       let jobs = []
-      for (const res of [r1, r2, a1, a2, j1]) {
+      for (const res of [r1, r2, r3, r4, a1, a2, a3, a4, j1, j2]) {
         if (res.status === "fulfilled") jobs.push(...res.value)
       }
 
