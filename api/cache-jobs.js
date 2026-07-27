@@ -188,8 +188,14 @@ function parseDate(raw) {
 
 async function fetchReed(keywords, page) {
   try {
+    // Deliberately NOT appending "visa sponsorship" to the search string.
+    // Reed is a general job board - almost no real posting contains that
+    // literal phrase in its searchable text, so tacking it onto the query
+    // was starving the raw result pool to near-nothing before scoreJob()
+    // ever got a chance to run. Search broad, let CONFIRM_KW/MENTION_KW/
+    // sponsor_verified do the actual sponsorship-relevance filtering.
     const params = new URLSearchParams({
-      keywords: keywords + " visa sponsorship",
+      keywords,
       resultsToTake: 25,
       resultsToSkip: (page - 1) * 25,
     })
@@ -214,9 +220,11 @@ async function fetchReed(keywords, page) {
 
 async function fetchAdzuna(keywords, page) {
   try {
+    // Same reasoning as fetchReed() above - search the plain role, don't
+    // choke the query with a phrase real postings rarely contain verbatim.
     const params = new URLSearchParams({
       app_id: ADZUNA_ID, app_key: ADZUNA_KEY,
-      what: keywords + " visa sponsorship",
+      what: keywords,
       where: "uk", results_per_page: 25,
     })
     const r = await fetch("https://api.adzuna.com/v1/api/jobs/gb/search/" + page + "?" + params, { signal: AbortSignal.timeout(10000) })
@@ -240,6 +248,13 @@ async function fetchAdzuna(keywords, page) {
 
 async function fetchJooble(keywords, page) {
   try {
+    // Deliberately NOT changed like fetchReed()/fetchAdzuna() above - the
+    // scorer gives Jooble results a flat +20 baseline specifically because
+    // this query still narrows to visa-related postings (see scoreJob()'s
+    // "Jooble pre-filters by visa keywords" comment). Stripping the phrase
+    // here without also removing that baseline would just recreate the same
+    // "fake volume from an unearned pass" problem the sponsor-match fix
+    // just solved, from a different angle.
     const r = await fetch("https://jooble.org/api/" + JOOBLE_KEY, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
