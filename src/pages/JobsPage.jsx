@@ -140,7 +140,7 @@ async function checkSponsor(employerName) {
     const { data: wordMatch } = await supabase
       .from("sponsors")
       .select("organisation_name, town, route, rating")
-      .filter("organisation_name", "~*", `\\y${escaped}\\y`)
+      .filter("organisation_name", "imatch", `\\y${escaped}\\y`)
       .limit(1)
     if (wordMatch?.[0]) return wordMatch[0]
 

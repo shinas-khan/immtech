@@ -309,7 +309,7 @@ async function checkSponsors(supabase, employers) {
         const escaped = clean.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
         const { data: wordMatch } = await supabase.from("sponsors")
           .select("organisation_name, rating, route")
-          .filter("organisation_name", "~*", `\\y${escaped}\\y`)
+          .filter("organisation_name", "imatch", `\\y${escaped}\\y`)
           .limit(1)
         if (wordMatch && wordMatch[0]) results[emp] = wordMatch[0]
       } catch {}
