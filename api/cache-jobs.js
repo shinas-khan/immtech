@@ -403,11 +403,25 @@ export default async function handler(req, res) {
           const { score, likelihood, signals, fresher_friendly, verified } = scoreJob(jobWithSponsor)
           return { ...jobWithSponsor, score, likelihood, signals, fresher_friendly, verified, search_keywords: [term] }
         })
-        .filter(j => j.score > 0)
+
+      const passingJobs = scoredJobs.filter(j => j.score > 0)
+
+      // Any job re-fetched this run that no longer passes scoring (e.g. it
+      // was previously cached under looser logic, and a fix like the
+      // "sponsorship available: no" bug now correctly rejects it) needs to
+      // be actively removed. Upsert alone only ever adds/refreshes passing
+      // rows - it never goes back and deletes one that used to qualify.
+      // Without this, a scoring-logic fix doesn't actually take effect on
+      // the live site until that stale row happens to age past the 6-hour
+      // cleanup sweep below, which could be hours after the code deployed.
+      const failingIds = scoredJobs.filter(j => j.score === 0).map(j => j.id)
+      if (failingIds.length > 0) {
+        await supabase.from("cached_jobs").delete().in("id", failingIds)
+      }
 
       // Upsert into Supabase
-      if (scoredJobs.length > 0) {
-        const rows = scoredJobs.map(j => ({
+      if (passingJobs.length > 0) {
+        const rows = passingJobs.map(j => ({
           id: j.id,
           source: j.source,
           title: j.title,
