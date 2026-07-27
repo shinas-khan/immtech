@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
+import SmoothScroll from "./components/SmoothScroll"
+import Cursor from "./components/Cursor"
 import LandingPage from "./pages/LandingPage"
 import JobsPage from "./pages/JobsPage"
 import AuthPage from "./pages/AuthPage"
@@ -22,11 +24,17 @@ import { PrivacyPage, TermsPage, CookiePage, GDPRPage, MissionPage } from "./pag
 export default function App() {
   return (
     <BrowserRouter>
+      {/* Site-wide interaction layer. Both no-op on touch devices and when
+          prefers-reduced-motion is set, so they add nothing to mobile weight
+          beyond a mount-and-return. */}
+      <SmoothScroll />
+      <Cursor />
       <div style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
           *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-          html { scroll-behavior: smooth; }
+          /* scroll-behavior:smooth removed - it fights Lenis's interpolation
+             and causes a double-easing stutter on anchor jumps. */
           body { overflow-x: hidden; -webkit-font-smoothing: antialiased; background: #fff; max-width: 100vw; }
           button, input, select, textarea { font-family: inherit; }
           ::-webkit-scrollbar { width: 5px; }

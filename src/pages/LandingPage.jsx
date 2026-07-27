@@ -7,6 +7,8 @@ gsap.registerPlugin(ScrollTrigger)
 
 // Three.js is ~600kB - code-split it so it never blocks first paint/LCP
 // of the hero copy and CTA buttons, which matter far more for conversion.
+import RevealText from "../components/RevealText"
+
 const Hero3D = lazy(() => import("../components/Hero3D"))
 
 function useCountUp(target, duration = 2000, start = false) {
@@ -163,7 +165,8 @@ export default function LandingPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
+        /* scroll-behavior:smooth removed - it fights Lenis's interpolation
+             and causes a double-easing stutter on anchor jumps. */
         body { overflow-x: hidden; -webkit-font-smoothing: antialiased; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(32px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -185,6 +188,9 @@ export default function LandingPage() {
         .how-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.08); }
         .stat-card { transition: all 0.3s; }
         .stat-card:hover { transform: translateY(-3px); }
+        @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .marquee-track { animation: marquee 38s linear infinite; }
+        @media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }
         .route-chip { transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.2s; }
         .route-chip:hover { transform: translateY(-2px); border-color: #D8E2F8 !important; box-shadow: 0 6px 18px rgba(10,15,30,0.07); }
         .floating { animation: float 4s ease-in-out infinite; }
@@ -295,11 +301,12 @@ export default function LandingPage() {
               <span style={{ fontSize: 12, fontWeight: 700, color: "#0057FF", letterSpacing: 0.5 }}>UK Visa Sponsorship Platform</span>
             </div>
 
-            <h1 className={heroVisible ? "fade-up fade-up-2" : ""} style={{ fontSize: "clamp(36px, 5vw, 64px)", fontWeight: 900, color: "#0A0F1E", lineHeight: 1.05, letterSpacing: -2, marginBottom: 24 }}>
-              Find your<br />
-              <span style={{ color: "#0057FF" }}>sponsored job</span><br />
-              in the UK
-            </h1>
+            <RevealText
+              as="h1"
+              delay={0.15}
+              lines={["Find your", <span key="s" style={{ color: "#0057FF" }}>sponsored job</span>, "in the UK"]}
+              style={{ fontSize: "clamp(36px, 5vw, 64px)", fontWeight: 900, color: "#0A0F1E", lineHeight: 1.05, letterSpacing: -2, marginBottom: 24 }}
+            />
 
             <p className={heroVisible ? "fade-up fade-up-3" : ""} style={{ fontSize: 18, color: "#555", lineHeight: 1.7, marginBottom: 36, maxWidth: 460 }}>
               Every job verified against 125,284 Home Office licensed sponsors. Real salary checks. Built specifically for international graduates.
@@ -402,6 +409,25 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Infinite marquee - a continuously scrolling band of the visa routes
+          and top sponsor sectors. Two identical tracks translate -50% in a
+          seamless loop; CSS-only, so it costs nothing on the main thread and
+          keeps running while GSAP is busy. Paused for reduced-motion. */}
+      <div style={{ background: "#0A0F1E", padding: "20px 0", overflow: "hidden", borderTop: "1px solid #1E2640", borderBottom: "1px solid #1E2640" }}>
+        <div className="marquee-track" style={{ display: "flex", width: "max-content" }}>
+          {[0, 1].map(dup => (
+            <div key={dup} aria-hidden={dup === 1} style={{ display: "flex", alignItems: "center", gap: 44, paddingRight: 44 }}>
+              {["Skilled Worker", "Health & Care Worker", "Shortage Occupation", "New Entrant Rate", "Global Talent", "Scale-up Worker", "Graduate Route", "Senior or Specialist Worker"].map(t => (
+                <span key={t} style={{ display: "inline-flex", alignItems: "center", gap: 14, whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: -0.3 }}>{t}</span>
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#0057FF" }} />
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Role pills */}
       <section style={{ background: "#F8FAFF", padding: "60px 5%" }}>
