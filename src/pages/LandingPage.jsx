@@ -185,6 +185,8 @@ export default function LandingPage() {
         .how-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.08); }
         .stat-card { transition: all 0.3s; }
         .stat-card:hover { transform: translateY(-3px); }
+        .route-chip { transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), border-color 0.2s, box-shadow 0.2s; }
+        .route-chip:hover { transform: translateY(-2px); border-color: #D8E2F8 !important; box-shadow: 0 6px 18px rgba(10,15,30,0.07); }
         .floating { animation: float 4s ease-in-out infinite; }
         .floating-2 { animation: float 4s ease-in-out infinite 1s; }
         .floating-3 { animation: float 4s ease-in-out infinite 2s; }
@@ -198,7 +200,22 @@ export default function LandingPage() {
           .lp-desktop-only { display: none !important; }
           .lp-nav-hamburger { display: flex !important; }
           .lp-hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
-          .lp-hero-3d { display: none !important; }
+          /* The 3D globe used to be display:none on mobile. It now stays,
+             but as a full-bleed background layer at reduced opacity instead
+             of a right-hand column - so phones still get the animation
+             without it colliding with the headline. Node/arc/star counts are
+             already scaled down inside Hero3D for narrow viewports. */
+          /* Opacity is deliberately low here. At 0.5 the nodes sat directly
+             on top of the hero paragraph and dropped the text contrast below
+             the 4.5:1 WCAG AA floor - readable-looking on a big monitor,
+             genuinely hard to read on a phone. Pushed down and faded so the
+             animation still reads as depth behind the copy, never over it. */
+          .lp-hero-3d {
+            width: 145% !important;
+            right: -22% !important;
+            opacity: 0.25 !important;
+            top: 22% !important;
+          }
           .lp-hero-right { height: 420px !important; margin-top: 8px; }
           .lp-2col { grid-template-columns: 1fr !important; gap: 32px !important; }
           .lp-footer-top { grid-template-columns: 1fr !important; gap: 36px !important; }
@@ -269,7 +286,7 @@ export default function LandingPage() {
           </Suspense>
         </div>
 
-        <div className="lp-hero-grid" style={{ maxWidth: 1140, margin: "0 auto", width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center", position: "relative" }}>
+        <div className="lp-hero-grid" style={{ maxWidth: 1140, margin: "0 auto", width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 60, alignItems: "center", position: "relative", zIndex: 1 }}>
 
           {/* Left - copy */}
           <div>
@@ -305,6 +322,25 @@ export default function LandingPage() {
                   <div style={{ fontSize: 18, fontWeight: 900, color: "#0A0F1E" }}>{val}</div>
                   <div style={{ fontSize: 12, color: "#888", fontWeight: 500 }}>{label}</div>
                 </div>
+              ))}
+            </div>
+
+            {/* Legend for the 3D network's colour coding. Without this the
+                colours are just decoration; with it, the globe is readable -
+                each dot is a sponsor, each colour a visa route. Clicking a
+                route filters the jobs page to it. */}
+            <div className={heroVisible ? "fade-up fade-up-4" : ""} style={{ marginTop: 28, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[
+                ["Skilled Worker", "#0057FF", "/jobs"],
+                ["Health & Care", "#00B86B", "/jobs?q=nurse"],
+                ["Shortage", "#FF6B35", "/jobs?q=engineer"],
+                ["New Entrant", "#7C5CFF", "/jobs?newEntrant=1"],
+              ].map(([label, color, path]) => (
+                <button key={label} className="route-chip" onClick={() => navigate(path)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#fff", border: "1.5px solid #ECF0FA", borderRadius: 30, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, color: "#0A0F1E" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, boxShadow: `0 0 0 3px ${color}22` }} />
+                  {label}
+                </button>
               ))}
             </div>
           </div>
