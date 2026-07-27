@@ -285,9 +285,27 @@ const MENTION_KW = [
   "global talent",
 ]
 
+// Reed (and others) often embed a structured field straight into the job
+// description, e.g. "Visa Sponsorship Available: No". That field is the
+// single most authoritative per-role signal there is - far more reliable
+// than an employer-level sponsor-register match, since holding a sponsor
+// licence doesn't mean every vacancy at that org is sponsorable. The bug:
+// CONFIRM_KW below includes "visa sponsorship available" as a POSITIVE
+// phrase, which is a literal substring of "visa sponsorship available: no" -
+// so this exact field was being read backwards and scored as confirmation.
+// This regex catches the field (with or without "visa", with or without a
+// space before the colon) and hard-rejects before CONFIRM_KW/MENTION_KW
+// ever get a chance to run on the same text.
+const NO_SPONSOR_FIELD_RE = /\bsponsorship\s*(?:available|provided|offered)?\s*:\s*no\b/i
+
 function scoreJob(job, sponsorData, isNewEntrantMode) {
   const rawDesc = (job.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ")
   const text = (job.title + " " + rawDesc + " " + job.employer).toLowerCase()
+
+  // HARD REJECT 0: explicit structured "no" field - checked before anything else
+  if (NO_SPONSOR_FIELD_RE.test(text)) {
+    return { score: 0, signals: [], fresherFriendly: false, verified: false, likelihood: "" }
+  }
 
   // HARD REJECT 1: Explicit no-sponsorship phrase
   for (const neg of HARD_REJECT_KW) {

@@ -101,9 +101,21 @@ const MIN_SALARY_STANDARD = 41700
 const MIN_SALARY_SHORTAGE = 33400
 const MIN_SALARY_HEALTH   = 29000
 
+// Reed embeds a structured "Visa Sponsorship Available: No" field straight
+// into some job descriptions - the actual per-role source of truth, since a
+// sponsor licence at the org level doesn't make every vacancy sponsorable.
+// CONFIRM_KW below contains "visa sponsorship available" as a POSITIVE
+// phrase, which is literally a substring of that field's "...available: No"
+// wording - so this was previously being scored as confirmation instead of
+// rejection. Checked before CONFIRM_KW/MENTION_KW so the trailing "no" never
+// gets a chance to be misread as a positive.
+const NO_SPONSOR_FIELD_RE = /\bsponsorship\s*(?:available|provided|offered)?\s*:\s*no\b/i
+
 function scoreJob(job) {
   const text = ((job.title || "") + " " + (job.description || "") + " " + (job.employer || "")).toLowerCase()
   const Z = { score: 0, likelihood: "", signals: [], fresher_friendly: false, verified: false }
+
+  if (NO_SPONSOR_FIELD_RE.test(text)) return Z
 
   for (const neg of HARD_REJECT_KW) {
     if (text.includes(neg)) return Z
