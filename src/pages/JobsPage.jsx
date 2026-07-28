@@ -554,7 +554,7 @@ function JobCard({ job, onSave, saved, navigate, mob }) {
             {expanded ? "Hide description" : "Show description"}
           </button>
           {expanded && (
-            <p style={{ margin: "8px 0 0", fontSize: 12, color: "#4B5675", lineHeight: 1.7, borderTop: "1px solid #E8EEFF", paddingTop: 8, maxHeight: 150, overflow: "auto" }}>
+            <p data-lenis-prevent style={{ margin: "8px 0 0", fontSize: 12, color: "#4B5675", lineHeight: 1.7, borderTop: "1px solid #E8EEFF", paddingTop: 8, maxHeight: 150, overflow: "auto" }}>
               {job.description.replace(/<[^>]*>/g, "").slice(0, 500)}
               {job.description.length > 500 ? "..." : ""}
             </p>
@@ -851,7 +851,7 @@ export default function JobsPage() {
               </button>
             )}
             {showQ && (
-              <div style={dropStyle}>
+              <div style={dropStyle} data-lenis-prevent>
                 <div style={{ padding: "10px 14px 8px", fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #F8FAFF" }}>
                   {q ? `${filteredRoles.length} matching roles` : `All ${ALL_ROLES.length - 1} roles`}
                 </div>
@@ -883,7 +883,7 @@ export default function JobsPage() {
                 style={{ width: "100%", border: "none", outline: "none", background: "transparent", padding: "12px 12px 12px 72px", fontSize: 13, color: "#0A0F1E", fontFamily: "inherit" }}
               />
               {showL && (
-                <div style={dropStyle}>
+                <div style={dropStyle} data-lenis-prevent>
                   <div style={{ padding: "10px 14px 8px", fontSize: 10, fontWeight: 700, color: "#9CA3B8", textTransform: "uppercase", letterSpacing: 0.8, position: "sticky", top: 0, background: "#fff", borderBottom: "1px solid #F8FAFF" }}>
                     {loc ? `${filteredLocs.length} locations` : `All ${ALL_LOCS.length - 1} UK cities`}
                   </div>
