@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom"
 import { supabase } from "../lib/supabase"
 import { ALL_JOBS, NATIONALITIES, INDUSTRIES } from "../lib/constants"
 import Nav from "../components/Nav"
+// extractCvText pulls in pdf.js (~2MB unminified worker) and mammoth - both
+// dynamically imported inside handleCvUpload below rather than statically
+// here, so they only load for someone who actually uploads a CV instead of
+// adding ~900KB to the JS every visitor downloads just to view any page.
 
 function useWindowWidth() {
   const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1200)
@@ -24,6 +28,35 @@ async function scoreCV(cvText, jobRole) {
   return await response.json()
 }
 
+async function recommendRoles(cvText, currentRole, industry, experienceYears) {
+  const response = await fetch("/api/recommend-roles", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cvText, currentRole, industry, experienceYears })
+  })
+  if (!response.ok) throw new Error("API error")
+  return await response.json()
+}
+
+async function generateCvCover(cvText, targetRole, jobDescription, fullName) {
+  const response = await fetch("/api/generate-cv-cover", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cvText, targetRole, jobDescription, fullName })
+  })
+  if (!response.ok) throw new Error("API error")
+  return await response.json()
+}
+
+function downloadText(filename, content) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url; a.download = filename
+  document.body.appendChild(a); a.click(); document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 export default function ProfilePage() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState({
@@ -41,6 +74,15 @@ export default function ProfilePage() {
   const [cvScore, setCvScore] = useState(null)
   const [scoring, setScoring] = useState(false)
   const [scoreError, setScoreError] = useState("")
+  const [roleRecs, setRoleRecs] = useState(null)
+  const [recommending, setRecommending] = useState(false)
+  const [recError, setRecError] = useState("")
+  const [genTargetRole, setGenTargetRole] = useState("")
+  const [genJobDesc, setGenJobDesc] = useState("")
+  const [genResult, setGenResult] = useState(null)
+  const [generating, setGenerating] = useState(false)
+  const [genError, setGenError] = useState("")
+  const [genView, setGenView] = useState("cv")
   const [savedJobs, setSavedJobs] = useState([])
   const [alerts, setAlerts] = useState([])
   const [showAlertForm, setShowAlertForm] = useState(false)
@@ -80,14 +122,15 @@ export default function ProfilePage() {
     if (!file) return
     setCvName(file.name); setCvScore(null); setScoreError("")
     try {
-      let text = ""
-      try { text = await file.text() } catch {}
-      if (!text || text.length < 50 || text.includes("\x00")) {
-        const buffer = await file.arrayBuffer()
-        const bytes = new Uint8Array(buffer)
-        text = Array.from(bytes).map(b => (b > 31 && b < 127) ? String.fromCharCode(b) : " ").join("").replace(/\s+/g, " ").trim()
-      }
+      // Real parsing (pdf.js / mammoth) instead of the previous "scan the raw
+      // bytes for printable characters" hack, which produced binary noise on
+      // any compressed PDF or on .docx (a zip archive) and silently scored
+      // that noise as if it were the CV. Loaded on demand - see the import
+      // comment at the top of this file for why.
+      const { extractCvText } = await import("../lib/extractCvText")
+      const { text, warning } = await extractCvText(file)
       setCvText(text)
+      setScoreError(warning || "")
       try {
         const path = `${user.id}/cv-${Date.now()}.${file.name.split(".").pop()}`
         await supabase.storage.from("cvs").upload(path, file)
@@ -105,6 +148,32 @@ export default function ProfilePage() {
       await supabase.from("profiles").upsert({ id: user.id, cv_score: JSON.stringify(score) })
     } catch (err) { setScoreError("Could not score CV. Please try again.") }
     finally { setScoring(false) }
+  }
+
+  const handleRecommendRoles = async () => {
+    if (!cvText || cvText.length < 50) { setRecError("Upload a readable CV first - see the warning above if your last upload couldn't be parsed."); return }
+    setRecommending(true); setRecError(""); setRoleRecs(null)
+    try {
+      const result = await recommendRoles(cvText, profile.job_role, profile.industry, profile.experience_years)
+      if (!result.recommendations || result.recommendations.length === 0) {
+        setRecError(result.note || "Couldn't generate recommendations from this CV. Try adding more detail about your work history.")
+      } else {
+        setRoleRecs(result.recommendations)
+      }
+    } catch (err) { setRecError("Could not generate role recommendations. Please try again.") }
+    finally { setRecommending(false) }
+  }
+
+  const handleGenerate = async () => {
+    if (!cvText || cvText.length < 50) { setGenError("Upload a readable CV first, on the CV & Score tab."); return }
+    if (!genTargetRole.trim()) { setGenError("Enter the role you're targeting."); return }
+    setGenerating(true); setGenError(""); setGenResult(null)
+    try {
+      const result = await generateCvCover(cvText, genTargetRole, genJobDesc, profile.full_name)
+      if (result.error) setGenError(result.error)
+      else setGenResult(result)
+    } catch (err) { setGenError("Could not generate documents. Please try again.") }
+    finally { setGenerating(false) }
   }
 
   const removeJob = async (id) => {
@@ -142,6 +211,7 @@ export default function ProfilePage() {
     { id: "overview", label: "Overview", icon: "👤" },
     { id: "profile", label: "Edit Profile", icon: "✏️" },
     { id: "cv", label: "CV & Score", icon: "📄" },
+    { id: "ai-docs", label: "AI CV & Cover Letter", icon: "✨" },
     { id: "saved", label: `Saved Jobs${savedJobs.length > 0 ? ` (${savedJobs.length})` : ""}`, icon: "🔖" },
     { id: "alerts", label: `Alerts${alerts.length > 0 ? ` (${alerts.length})` : ""}`, icon: "🔔" },
   ]
@@ -406,13 +476,13 @@ export default function ProfilePage() {
             {/* Upload */}
             <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 20, padding: mob ? "20px" : "32px" }}>
               <h3 style={{ fontSize: 16, fontWeight: 800, color: "#0A0F1E", margin: "0 0 6px" }}>Upload Your CV</h3>
-              <p style={{ color: "#9CA3B8", fontSize: 13, margin: "0 0 20px" }}>For best results upload as .txt — PDF and .docx also supported</p>
+              <p style={{ color: "#9CA3B8", fontSize: 13, margin: "0 0 20px" }}>PDF, .docx and .txt all fully supported — scanned/image-only PDFs can't be read, so use a text-based export if you have one</p>
 
               <div onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); handleCvUpload(e.dataTransfer.files[0]) }} onClick={() => document.getElementById("cv-input").click()} style={{ border: `2px dashed ${cvName ? "#00D68F" : "#E8EEFF"}`, borderRadius: 16, padding: mob ? "32px 16px" : "40px 24px", textAlign: "center", background: cvName ? "#00D68F05" : "#F8FAFF", cursor: "pointer", marginBottom: 20, transition: "all 0.25s" }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = cvName ? "#00D68F" : "#0057FF"}
                 onMouseLeave={e => e.currentTarget.style.borderColor = cvName ? "#00D68F" : "#E8EEFF"}
               >
-                <input id="cv-input" type="file" accept=".pdf,.doc,.docx,.txt" style={{ display: "none" }} onChange={e => handleCvUpload(e.target.files[0])} />
+                <input id="cv-input" type="file" accept=".pdf,.docx,.txt" style={{ display: "none" }} onChange={e => handleCvUpload(e.target.files[0])} />
                 <div style={{ fontSize: 40, marginBottom: 12 }}>{cvName ? "✅" : "📄"}</div>
                 {cvName ? (
                   <>
@@ -495,6 +565,95 @@ export default function ProfilePage() {
                     ))}
                   </div>
                 )}
+
+                {/* Recommended roles */}
+                <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 16, padding: "20px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: roleRecs ? 16 : 0 }}>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: "#0A0F1E" }}>🎯 Recommended sponsorable roles</div>
+                      <div style={{ fontSize: 12, color: "#9CA3B8", marginTop: 2 }}>AI-matched from your CV against roles IMMTECH knows are currently sponsorable — not a general career suggestion list</div>
+                    </div>
+                    <button onClick={handleRecommendRoles} disabled={recommending} style={{ background: "#0A0F1E", color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 700, cursor: recommending ? "wait" : "pointer", fontFamily: "inherit", whiteSpace: "nowrap", opacity: recommending ? 0.7 : 1 }}>
+                      {recommending ? "Matching..." : roleRecs ? "Re-run" : "Recommend roles for me →"}
+                    </button>
+                  </div>
+
+                  {recError && (
+                    <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "12px 16px", color: "#DC2626", fontSize: 13, marginTop: 12 }}>
+                      ❌ {recError}
+                    </div>
+                  )}
+
+                  {roleRecs && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                      {roleRecs.map(r => (
+                        <div key={r.title} style={{ background: "#F8FAFF", border: "1px solid #E8EEFF", borderRadius: 12, padding: "14px 16px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: "#0A0F1E" }}>{r.title}</div>
+                            <div style={{ fontSize: 13, fontWeight: 900, color: "#0057FF", flexShrink: 0 }}>{r.fitScore}% fit</div>
+                          </div>
+                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                            <span style={{ background: "#0057FF15", color: "#0057FF", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>{r.route}</span>
+                            <span style={{ background: "#F0F0F0", color: "#4B5675", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>Min salary GBP {r.minSalary.toLocaleString()}</span>
+                          </div>
+                          {r.reason && <div style={{ fontSize: 12, color: "#4B5675", lineHeight: 1.6, marginBottom: 10 }}>{r.reason}</div>}
+                          <button onClick={() => navigate("/jobs?q=" + encodeURIComponent(r.searchTerm || r.title))} style={{ background: "#fff", color: "#0057FF", border: "1.5px solid #0057FF", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                            Find {r.title} jobs →
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* AI CV & COVER LETTER TAB */}
+        {activeTab === "ai-docs" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 20, padding: mob ? "20px" : "32px" }}>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: "#0A0F1E", margin: "0 0 6px" }}>Generate an ATS CV + cover letter</h3>
+              <p style={{ color: "#9CA3B8", fontSize: 13, margin: "0 0 20px" }}>
+                Rewrites your uploaded CV (from the CV & Score tab) into an ATS-friendly UK format and drafts a tailored cover letter — using only what's actually in your CV, nothing invented.
+              </p>
+
+              {!cvText && (
+                <div style={{ background: "#FFF7ED", border: "1px solid #FED7AA", borderRadius: 10, padding: "12px 16px", color: "#C2410C", fontSize: 13, marginBottom: 16 }}>
+                  ⚠️ No CV loaded yet — upload one on the <b>CV & Score</b> tab first.
+                </div>
+              )}
+
+              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#4B5675", marginBottom: 6 }}>Target role *</label>
+              <input value={genTargetRole} onChange={e => setGenTargetRole(e.target.value)} placeholder="e.g. Software Engineer, Registered Nurse..."
+                style={{ width: "100%", border: "1.5px solid #E8EEFF", borderRadius: 10, padding: "12px 14px", fontSize: 14, color: "#0A0F1E", fontFamily: "inherit", outline: "none", background: "#F8FAFF", marginBottom: 14 }} />
+
+              <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#4B5675", marginBottom: 6 }}>Job description (optional, improves tailoring)</label>
+              <textarea value={genJobDesc} onChange={e => setGenJobDesc(e.target.value)} rows={4} placeholder="Paste the job ad text here for a more tailored result..."
+                style={{ width: "100%", border: "1.5px solid #E8EEFF", borderRadius: 10, padding: "12px 14px", fontSize: 14, color: "#0A0F1E", fontFamily: "inherit", outline: "none", background: "#F8FAFF", marginBottom: 16, resize: "vertical" }} />
+
+              <button onClick={handleGenerate} disabled={generating} style={{ width: "100%", background: "linear-gradient(135deg, #0057FF, #00C2FF)", color: "#fff", border: "none", borderRadius: 14, padding: "16px", fontSize: 16, fontWeight: 700, cursor: generating ? "wait" : "pointer", fontFamily: "inherit", boxShadow: "0 4px 20px #0057FF30", opacity: generating ? 0.8 : 1 }}>
+                {generating ? "✨ Generating..." : "✨ Generate CV + Cover Letter"}
+              </button>
+
+              {genError && (
+                <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "12px 16px", color: "#DC2626", fontSize: 13, marginTop: 12 }}>
+                  ❌ {genError}
+                </div>
+              )}
+            </div>
+
+            {genResult && (
+              <div style={{ background: "#fff", border: "1px solid #E8EEFF", borderRadius: 20, padding: mob ? "20px" : "32px" }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                  <button onClick={() => setGenView("cv")} style={{ background: genView === "cv" ? "#0057FF" : "#F0F4FF", color: genView === "cv" ? "#fff" : "#0057FF", border: "none", borderRadius: 10, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>ATS CV</button>
+                  <button onClick={() => setGenView("cover")} style={{ background: genView === "cover" ? "#0057FF" : "#F0F4FF", color: genView === "cover" ? "#fff" : "#0057FF", border: "none", borderRadius: 10, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>Cover Letter</button>
+                  <button onClick={() => downloadText(genView === "cv" ? "ATS-CV.txt" : "Cover-Letter.txt", genView === "cv" ? genResult.atsCv : genResult.coverLetter)} style={{ marginLeft: "auto", background: "#00D68F", color: "#fff", border: "none", borderRadius: 10, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>⬇ Download .txt</button>
+                </div>
+                <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "inherit", fontSize: 13, lineHeight: 1.7, color: "#0A0F1E", background: "#F8FAFF", border: "1px solid #E8EEFF", borderRadius: 14, padding: "20px", margin: 0, maxHeight: 500, overflow: "auto" }} data-lenis-prevent>
+                  {genView === "cv" ? genResult.atsCv : genResult.coverLetter}
+                </pre>
               </div>
             )}
           </div>
