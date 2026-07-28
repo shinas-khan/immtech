@@ -128,8 +128,15 @@ export default function LandingPage() {
 
       // Batched reveal-on-scroll for every repeated card/pill group that
       // previously had no scroll animation at all.
+      // ".role-pill" deliberately excluded from this list. It was previously
+      // scroll-gated like the others, but it sits directly under the hero -
+      // the section most exposed to any ScrollTrigger start-position drift
+      // from the Hero3D canvas settling its final height late (see
+      // SmoothScroll.jsx). A mistimed trigger there reads as pills stuck
+      // half-faded rather than a late-but-complete reveal, which is exactly
+      // what was reported. Simplest fix that can't regress: never gate this
+      // one on scroll position at all - it just renders at full opacity.
       const batches = [
-        { sel: ".role-pill", y: 24, stagger: 0.05 },
         { sel: ".grad-card", y: 30, stagger: 0.08 },
         { sel: ".cta-card", y: 40, stagger: 0.15 },
         { sel: ".footer-col", y: 24, stagger: 0.08 },

@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabase"
 
 const SOC_DATA = [
   { soc: "2136", title: "Programmers and software development professionals", minSalary: 41700, newEntrant: 33400, route: "Skilled Worker", eligible: true, icon: "01", color: "#0057FF", keywords: ["software engineer", "software developer", "programmer", "full stack", "backend", "frontend", "web developer", "react", "node", "python developer", "java developer"] },
-  { soc: "2139", title: "IT and telecommunications professionals", minSalary: 41700, newEntrant: 33400, route: "Skilled Worker", eligible: true, icon: "02", color: "#0057FF", keywords: ["cyber security", "information security", "network engineer", "it manager", "systems architect", "cloud engineer", "devops", "site reliability", "platform engineer"] },
+  { soc: "2139", title: "IT and telecommunications professionals", minSalary: 41700, newEntrant: 33400, route: "Skilled Worker", eligible: true, icon: "02", color: "#0057FF", keywords: ["cyber security", "information security", "network engineer", "it manager", "systems architect", "cloud engineer", "devops", "site reliability", "platform engineer", "soc analyst", "security operations centre analyst", "security operations center analyst", "security analyst", "soc engineer", "threat analyst", "incident response analyst", "penetration tester", "security engineer"] },
   { soc: "2137", title: "IT business analysts and systems designers", minSalary: 41700, newEntrant: 33400, route: "Skilled Worker", eligible: true, icon: "03", color: "#0057FF", keywords: ["business analyst", "systems analyst", "solutions architect", "it consultant", "data analyst", "data scientist", "data engineer", "machine learning", "ai engineer"] },
   { soc: "2425", title: "Actuaries, economists and statisticians", minSalary: 41700, newEntrant: 33400, route: "Skilled Worker", eligible: true, icon: "04", color: "#0057FF", keywords: ["actuary", "economist", "statistician", "quantitative analyst"] },
   { soc: "2421", title: "Chartered and certified accountants", minSalary: 41700, newEntrant: 33400, route: "Skilled Worker", eligible: true, icon: "05", color: "#0057FF", keywords: ["accountant", "auditor", "chartered accountant", "finance manager", "financial controller"] },
@@ -77,11 +77,34 @@ export default function COSCheckerPage() {
   const [selectedResult, setSelectedResult] = useState(null)
   const [animIn, setAnimIn] = useState(false)
   const [typingTimer, setTypingTimer] = useState(null)
+  const [trackRecord, setTrackRecord] = useState([])
+  const [trackRecordLoading, setTrackRecordLoading] = useState(true)
   const inputRef = useRef(null)
   const navigate = useNavigate()
 
   useEffect(() => {
     setTimeout(() => setAnimIn(true), 80)
+  }, [])
+
+  // Employers with an observed track record of sponsored postings. This is
+  // built from IMMTECH's own job-cache history (employer_sponsorship_history,
+  // populated by api/cache-jobs.js every cron run), NOT from any official
+  // Home Office CoS-issuance data - that data isn't published anywhere.
+  // Labeled as such in the UI below; don't quietly reword this into an
+  // official-sounding claim.
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from("employer_sponsorship_history")
+      .select("employer, times_seen, routes, first_seen, sponsor_rating")
+      .order("times_seen", { ascending: false })
+      .limit(12)
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (!error && data) setTrackRecord(data)
+        setTrackRecordLoading(false)
+      })
+    return () => { cancelled = true }
   }, [])
 
   const handleSearch = (q) => {
@@ -372,6 +395,42 @@ export default function COSCheckerPage() {
             </div>
           )}
         </div>
+
+        {/* Employer track record - IMMTECH-observed, not official CoS data */}
+        {(trackRecordLoading || trackRecord.length > 0) && (
+          <div className={animIn ? "fade-up" : ""} style={{ animationDelay: "0.25s", background: "#fff", borderRadius: 24, border: "1.5px solid #E8EEFF", padding: "32px", marginBottom: 24, boxShadow: "0 4px 24px rgba(0,87,255,0.04)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#F0F4FF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>&#128200;</div>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "#0A0F1E", marginBottom: 2 }}>Employers with a sponsorship track record</div>
+                <div style={{ fontSize: 13, color: "#888" }}>Ranked by how often IMMTECH has seen them post confirmed-sponsored roles</div>
+              </div>
+            </div>
+            <div style={{ background: "#FFF8E8", border: "1px solid #F5D98A", borderRadius: 12, padding: "10px 14px", fontSize: 12, color: "#8A6D1A", lineHeight: 1.6, marginBottom: 20 }}>
+              Not official Home Office data - the government does not publish per-employer CoS-issuance history. This list reflects roles IMMTECH itself has observed on the licensed sponsor register with confirmed sponsorship language, over time.
+            </div>
+            {trackRecordLoading ? (
+              <div style={{ fontSize: 13, color: "#aaa" }}>Loading&hellip;</div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+                {trackRecord.map(e => (
+                  <div key={e.employer} className="emp-badge" style={{ background: "#F8FAFF", borderRadius: 14, padding: "16px 18px", border: "1px solid #E8EEFF" }}>
+                    <div style={{ fontWeight: 800, color: "#0A0F1E", fontSize: 14, marginBottom: 8 }}>{e.employer}</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ background: "#0057FF15", color: "#0057FF", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>Seen {e.times_seen}x</span>
+                      {Array.isArray(e.routes) && e.routes[0] && (
+                        <span style={{ background: "#00B86B15", color: "#00B86B", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700 }}>{e.routes[0].split(":")[0]}</span>
+                      )}
+                      {e.sponsor_rating && (
+                        <span style={{ background: e.sponsor_rating === "A" ? "#00B86B20" : "#FF6B3520", color: e.sponsor_rating === "A" ? "#00B86B" : "#FF6B35", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 800 }}>{e.sponsor_rating}-Rated</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* How CoS works */}
         <div className={animIn ? "fade-up" : ""} style={{ animationDelay: "0.3s", marginBottom: 24 }}>

@@ -4,6 +4,24 @@
 // Scores them against the Home Office sponsor register
 // Stores results in Supabase cached_jobs table
 // JobsPage then reads from Supabase instead of live APIs = sub 1 second loads
+//
+// One-time migration required for the employer sponsorship track-record
+// feature below - run this once in the Supabase SQL editor before this file
+// is deployed, otherwise every cron run will log (harmless) history-write
+// errors into the `errors` array of its response:
+//
+//   create table if not exists employer_sponsorship_history (
+//     employer text primary key,
+//     first_seen timestamptz not null default now(),
+//     last_seen timestamptz not null default now(),
+//     times_seen integer not null default 1,
+//     routes text[] default '{}',
+//     sponsor_rating text
+//   );
+//   alter table employer_sponsorship_history enable row level security;
+//   create policy "public read" on employer_sponsorship_history for select using (true);
+//   -- No insert/update policy needed: this file writes with the service-role
+//   -- key (SUPABASE_SERVICE_KEY), which bypasses RLS entirely.
 
 import { createClient } from "@supabase/supabase-js"
 
@@ -38,6 +56,8 @@ const SEARCH_TERMS = [
   "full stack developer",
   "machine learning",
   "network engineer",
+  "soc analyst",
+  "security analyst",
   "care worker",
   "care assistant",
   "healthcare assistant",
@@ -348,6 +368,13 @@ export default async function handler(req, res) {
   let totalFetched = 0
   let totalCached = 0
   const errors = []
+  // Employers seen this run with a verified, sponsorship-confirmed posting -
+  // deduped ACROSS search terms (a Map, not per-term), so an employer that
+  // turns up under both "software engineer" and "devops engineer" in the
+  // same run counts as one observation, not two. Fed into
+  // employer_sponsorship_history after the fetch loop - see the comment
+  // there for what this table is and isn't.
+  const verifiedEmployerSeen = new Map()
 
   console.log("Starting job cache refresh...")
 
@@ -406,6 +433,30 @@ export default async function handler(req, res) {
 
       const passingJobs = scoredJobs.filter(j => j.score > 0)
 
+      // Record a sponsorship-history sighting for any employer that is both
+      // (a) on the licensed sponsor register and (b) has a job that scored
+      // high enough to be trusted (>= 60 = "Very Likely" or better - the
+      // same bar as the "Sponsorship Confirmed" signal). This is NOT a claim
+      // of official CoS issuance - the Home Office doesn't publish that data
+      // anywhere. It's an honest, clearly-labeled "IMMTECH has observed this
+      // employer posting confirmed-sponsored roles" track record.
+      for (const j of passingJobs) {
+        if (j.sponsor_verified && j.score >= 60 && j.employer) {
+          const key = j.employer.trim()
+          if (!key) continue
+          const existing = verifiedEmployerSeen.get(key)
+          if (existing) {
+            if (j.sponsor_route) existing.routes.add(j.sponsor_route)
+            if (j.sponsor_rating) existing.rating = j.sponsor_rating
+          } else {
+            verifiedEmployerSeen.set(key, {
+              routes: new Set(j.sponsor_route ? [j.sponsor_route] : []),
+              rating: j.sponsor_rating || null,
+            })
+          }
+        }
+      }
+
       // Any job re-fetched this run that no longer passes scoring (e.g. it
       // was previously cached under looser logic, and a fix like the
       // "sponsorship available: no" bug now correctly rejects it) needs to
@@ -457,6 +508,47 @@ export default async function handler(req, res) {
       }
     } catch (err) {
       errors.push({ term, error: err.message })
+    }
+  }
+
+  // Persist this run's verified-employer sightings into the standing
+  // track-record table. Non-atomic read-then-write (fetch existing row,
+  // merge, upsert) rather than a single atomic increment - fine here since
+  // this cron runs on its own schedule, never concurrently with itself.
+  //
+  // employer_sponsorship_history must already exist in Supabase - see the
+  // migration comment at the top of this file for the SQL to run once.
+  if (verifiedEmployerSeen.size > 0) {
+    try {
+      const employers = [...verifiedEmployerSeen.keys()]
+      const { data: existingRows } = await supabase
+        .from("employer_sponsorship_history")
+        .select("employer, times_seen, routes, first_seen")
+        .in("employer", employers)
+
+      const existingByEmployer = new Map((existingRows || []).map(r => [r.employer, r]))
+      const nowIso = new Date().toISOString()
+      const rows = employers.map(employer => {
+        const info = verifiedEmployerSeen.get(employer)
+        const prior = existingByEmployer.get(employer)
+        const mergedRoutes = new Set([...(prior?.routes || []), ...info.routes])
+        return {
+          employer,
+          first_seen: prior?.first_seen || nowIso,
+          last_seen: nowIso,
+          times_seen: (prior?.times_seen || 0) + 1,
+          routes: [...mergedRoutes],
+          sponsor_rating: info.rating,
+        }
+      })
+
+      const { error: historyError } = await supabase
+        .from("employer_sponsorship_history")
+        .upsert(rows, { onConflict: "employer" })
+
+      if (historyError) errors.push({ term: "employer_sponsorship_history", error: historyError.message })
+    } catch (err) {
+      errors.push({ term: "employer_sponsorship_history", error: err.message })
     }
   }
 

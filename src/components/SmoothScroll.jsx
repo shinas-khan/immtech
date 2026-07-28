@@ -44,19 +44,37 @@ export default function SmoothScroll() {
     gsap.ticker.add(raf)
     gsap.ticker.lagSmoothing(0)
 
-    // Anchor links / programmatic scrollTo need to go through Lenis too,
-    // otherwise they fight the interpolation and stutter.
-    ScrollTrigger.scrollerProxy(document.body, {
-      scrollTop(value) {
-        if (arguments.length) lenis.scrollTo(value, { immediate: true })
-        return lenis.animatedScroll
-      },
-    })
-    ScrollTrigger.refresh()
+    // No scrollerProxy here: Lenis (in its default, no-wrapper config used
+    // here) smooths the REAL document scrollTop rather than faking a virtual
+    // one, so ScrollTrigger's default window-based measurement already
+    // tracks it correctly via the lenis.on("scroll", ...) line above. A
+    // scrollerProxy(document.body, ...) was previously added "for safety"
+    // but every ScrollTrigger instance in this app omits `scroller:`, so it
+    // defaults to `window` and never reads the proxy - it was dead code.
+    // Removed rather than wired in, to avoid a second, unused scroll-position
+    // source drifting out of sync with the one ScrollTrigger actually uses.
+    //
+    // The refresh is deliberately delayed rather than called synchronously
+    // here. A synchronous refresh() bakes in every ScrollTrigger's start/end
+    // pixel position against whatever the DOM measures RIGHT NOW - before
+    // webfonts swap in and before the lazy-loaded Hero3D canvas reaches its
+    // final height. Anything below the hero (the role-pill / "roles we
+    // specialise in" row was the reported case) then has its reveal trigger
+    // anchored to a stale, too-short layout, so it fires at the wrong scroll
+    // offset - which reads as pills stuck at a partial opacity rather than
+    // never appearing, since the tween itself still runs, just mistimed.
+    const refresh = () => ScrollTrigger.refresh()
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(refresh)
+    }
+    window.addEventListener("load", refresh)
+    const settleTimer = setTimeout(refresh, 1200)
 
     return () => {
       gsap.ticker.remove(raf)
       lenis.destroy()
+      window.removeEventListener("load", refresh)
+      clearTimeout(settleTimer)
     }
   }, [])
 
